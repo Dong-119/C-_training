@@ -71,7 +71,6 @@ void button_png(IMAGE* png,int x,int y,int width,int height) {
 	}
 }
 
-
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
 	int xchar = (wbutton - textwidth(str)) / 2;
@@ -107,8 +106,6 @@ public:
 	};
 
 };
-
-
 
 void display_menu(){
 	//主菜单背景图
