@@ -18,8 +18,6 @@
 
 #include <stdio.h>
 #include <graphics.h>
-#include <string>
-#include <conio.h>
 #pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
 
@@ -30,8 +28,6 @@ inline void put_png(int x, int y, IMAGE* img)
 	AlphaBlend(GetImageHDC(NULL), x, y, w, h,
 		GetImageHDC(img), 0, 0, w, h, { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 }
-
-
 
 //设置画布参数
 int w = 1360, h = 765;
@@ -45,16 +41,16 @@ COLORREF color;
 //定义消息结构体变量
 ExMessage msg = { 0 };
 
-int wquit = 60, hquit = 60, wbutton = 315, hbutton = 70, wback = 90, hback = 60;;//定义退出键,返回键和一般键大小
+//定义退出键,返回键和一般键大小
+int wquit = 60, hquit = 60, wbutton = 315, hbutton = 70, wback = 90, hback = 60;
 
-
+//定义函数
 void display_menu();
 void display_how_to_play();
 void display_setting();
 void display_load();
 void display_play();
 void display_you_lose();
-
 
 void button_png(IMAGE* png,int x,int y,int width,int height) {
 	//把png图以宽weight高height放在background为背景的位置上，扣掉与第一块像素颜色相同部分
@@ -73,12 +69,6 @@ void button_png(IMAGE* png,int x,int y,int width,int height) {
 			}
 		}
 	}
-}
-
-void menu_background() {
-	//画面放置背景图
-	loadimage(&background, "assets//background.png", w, h);
-	putimage(0, 0, &background);
 }
 
 
@@ -122,11 +112,7 @@ public:
 
 void display_menu(){
 	//主菜单背景图
-	menu_background();
-
-
-	//画面右下角放置退出图标，左侧放置开始游戏，继续游戏，玩法介绍，设置
-
+	putimage(0, 0, &background);
 
 	//定义不同按键左上角位置
 	int xquit = 1260, yquit = 665;
@@ -134,7 +120,6 @@ void display_menu(){
 	int xload = xplay, yload = yplay + (h - yplay) / 4;
 	int xhow_to_play = xplay, yhow_to_play = yplay + 2 * (h - yplay) / 4;
 	int xsetting = xplay, ysetting = yplay + 3 * (h - yplay) / 4;
-
 
 	//根据第一个按键位置放置标题
 	settextstyle(200, 0, "华文行楷", 0, 0, 200, false, false, false);
@@ -150,19 +135,13 @@ void display_menu(){
 	button_png(&how_to_play, xhow_to_play, yhow_to_play, wbutton, hbutton);// putimage(xhow_to_play, yhow_to_play, &how_to_play);
 	button_png(&setting, xsetting, ysetting, wbutton, hbutton); //putimage(xsetting, ysetting, &setting);
 
-	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+    settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
 	setbkmode(TRANSPARENT);
-
-
 	center_text(wbutton, hbutton, xplay, yplay, "新游戏");
-
 	settextcolor(BLACK);
-
 	center_text(wbutton, hbutton, xload, yload, "继续游戏");
-
 	center_text(wbutton, hbutton, xhow_to_play, yhow_to_play, "游戏规则");
-
 	center_text(wbutton, hbutton, xsetting, ysetting, "设置");
 
 	//主菜单页面消息处理
@@ -190,7 +169,6 @@ void display_menu(){
 		}
 	}
 }
-
 
 void display_how_to_play() {
 	//换背景
@@ -231,13 +209,12 @@ void display_how_to_play() {
 					display_menu();//点击返回按钮将会返回主菜单
 				}
 				if ((msg.x > 100 + (w - textwidth("开始游戏") - 100) / 2 && msg.x < w - (w - 100 - textwidth("开始游戏")) / 2) && (msg.y > 3 * h / 4 + (h / 4 - textheight("开始游戏")) / 2 && msg.y < h - (h / 4 - textheight("开始游戏")) / 2)) {
-					display_play();//点击返回按钮将会返回主菜单
+					display_play();//点击开始游戏按钮将会跳转至游戏界面
 				}
 			}
 		}
 	}
 }
-
 
 void display_setting() {
 	//粘贴返回贴图
@@ -304,7 +281,6 @@ void display_play() {
 		}
 	}
 
-
 	//持续捕捉鼠标信息
 	while (1) {
 		if (peekmessage(&msg, EX_MOUSE)) {
@@ -318,10 +294,9 @@ void display_play() {
 }
 
 int main() {
-	
 	initgraph(w, h);
 	//加载贴图
-	
+	loadimage(&background, "assets//background.png", w, h);
 	loadimage(&quit, "assets//quit.jpg", wquit, hquit);
 	loadimage(&play, "assets//UItemplate2.png", wbutton, hbutton);
 	loadimage(&load, "assets//UItemplate1.png", wbutton, hbutton);
@@ -334,5 +309,4 @@ int main() {
 
 	//主菜单
 	display_menu();
-
 }
