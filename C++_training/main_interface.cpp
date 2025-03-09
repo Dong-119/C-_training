@@ -16,8 +16,11 @@
 
 //先用电脑生成路径作为答案，然后每一圈按照路径与非路径随机填色
 
+#include<iostream>
 #include <stdio.h>
 #include <graphics.h>
+#include <vector>
+#include <conio.h>
 #pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
 
@@ -33,6 +36,7 @@ inline void put_png(int x, int y, IMAGE* img)
 int w = 1360, h = 765;
 
 //声明背景图和贴图
+IMAGE title;
 IMAGE background,rule_background,play_background;
 IMAGE back;
 IMAGE quit, play, load, how_to_play, setting, pic, grid0, grid1;
@@ -78,7 +82,7 @@ void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const c
 	outtextxy(xtop_left + xchar, ytop_left + ychar, str);
 }
 
-class grid {
+class Grid {
 private:
 	int x, y;//位置
 	bool grid_color=false;
@@ -86,25 +90,42 @@ private:
 	int circle, position;
 	int reversed_time = 0;
 public:
-	grid(int x,int y,int circle,int position){
+	Grid(int x,int y,int circle,int position){
 		this->x = x;
 		this->y = y;
 		this->circle = circle;
 		this->position = position;
-		put_png(x, y, &grid0);
+		put_png(x, y, &grid0);                                                                                   //<---待优化
 	}
+
 	void reverse_color() {
 		if (reversed_time == 0) {
 			grid_color = !grid_color; 
-			if (grid_color == false) { put_png(x, y, &grid0); }
-			else { put_png(x, y, &grid1); }
+			if (grid_color == false) { put_png(x, y, &grid0); }                                                  //<---待优化
+			else { putimage(x, y, &grid1, SRCAND); }
 			reversed_time++;
 		}
 		else {
 			display_you_lose();
 		}
-	};
+	}
 
+	bool reverse_or_not () {
+		if (msg.y - y > -1.732 * (msg.x - x - wgrid / 4) && msg.y > y && msg.y - y > 1.732 * (msg.x - x - 3 * wgrid / 4) && msg.y - y < 1.732 * (msg.x - x) && msg.y - y < 2 * 1.732 * wgrid / 4 && msg.y - y < -1.732 * (msg.x - x - 3 * wgrid / 4) + 2 * 1.732 * wgrid / 4) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	const int get_circle(){
+		return circle;
+	}
+
+	const int get_position() {
+		return position;
+	}
 };
 
 void display_menu(){
@@ -118,19 +139,23 @@ void display_menu(){
 	int xhow_to_play = xplay, yhow_to_play = yplay + 2 * (h - yplay) / 4;
 	int xsetting = xplay, ysetting = yplay + 3 * (h - yplay) / 4;
 
+	//开始双缓冲绘图
+	BeginBatchDraw();
 	//根据第一个按键位置放置标题
 	settextstyle(200, 0, "华文行楷", 0, 0, 200, false, false, false);
-	IMAGE title;
 	loadimage(&title, "assets//title.png", textwidth("提笔乾坤"), textheight("提笔乾坤"));
-	put_png((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title);
+	//put_png((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title);
+	putimage((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title, SRCAND);
 	put_png(xplay + wbutton + 200, yplay - 80, &pic);
 
 	//放置按键贴图
 	putimage(xquit, yquit, &quit);
-	button_png(&play, xplay, yplay, wbutton, hbutton);//putimage(xplay, yplay, &play);
-	button_png(&load, xload, yload, wbutton, hbutton);//putimage(xload, yload, &load);
-	button_png(&how_to_play, xhow_to_play, yhow_to_play, wbutton, hbutton);// putimage(xhow_to_play, yhow_to_play, &how_to_play);
-	button_png(&setting, xsetting, ysetting, wbutton, hbutton); //putimage(xsetting, ysetting, &setting);
+	put_png( xplay, yplay, &play);//putimage(xplay, yplay, &play);
+	put_png(xload, yload, &load);//putimage(xload, yload, &load);
+	put_png( xhow_to_play, yhow_to_play, &how_to_play);// putimage(xhow_to_play, yhow_to_play, &how_to_play);
+	put_png( xsetting, ysetting, &setting); //putimage(xsetting, ysetting, &setting);
+	//缓冲完毕开始绘图
+	EndBatchDraw();
 
     settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
@@ -246,7 +271,7 @@ void display_load() {
 }
 
 void display_you_lose() {
-
+	display_menu();
 }
 
 void display_play() {
@@ -258,32 +283,115 @@ void display_play() {
 	//粘贴返回贴图
 	button_png(&back, 40, 40, wback, hback);
 
-	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
+	int deltax = 73, deltay = 39;//六边形紧密拼凑需要的横纵坐标差
 	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
 
+	//开始双缓冲绘图
+	BeginBatchDraw();
 	//生成盘面贴图
 	int xgrid, ygrid;
-	grid(x0, y0, 0, 0);
+	std::vector<Grid> grids;
+	grids.emplace_back(x0, y0, 0, 0);
 	for (int i = 0; i < 5; i++) {
 		ygrid = y0 - i * 2 * deltay;
 		xgrid = x0;
-		for (int j = 0; j <6*i; j++) {
+		for (int j = 0; j < 6 * i; j++) {
 			if (j / i == 0) { xgrid += deltax; ygrid += deltay; }
 			else if (j / i == 1) { ygrid += 2 * deltay; }
 			else if (j / i == 2) { xgrid -= deltax; ygrid += deltay; }
 			else if (j / i == 3) { xgrid -= deltax; ygrid -= deltay; }
 			else if (j / i == 4) { ygrid -= 2 * deltay; }
 			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
-			grid( xgrid, ygrid,i ,j );
+			grids.emplace_back(xgrid, ygrid,i ,j);
 		}
 	}
-
+	//缓冲完毕开始绘图
+	EndBatchDraw();
+	
 	//持续捕捉鼠标信息
+	int judge_msg;
 	while (1) {
 		if (peekmessage(&msg, EX_MOUSE)) {
-			if (msg.message == WM_LBUTTONDOWN) {
+			if (msg.message == WM_LBUTTONDOWN){
 				if ((msg.x > 40 && msg.x < 40 + wback) && (msg.y > 40 && msg.y < 40 + hback)) {
-					display_menu();//点击返回按钮将会返回主菜单
+					//点击返回按钮将会返回主菜单
+					grids.clear();//析构所有宫格
+					display_menu();
+				}
+				for (int i = 0; i <= 60; i++) {
+					if (grids[i].reverse_or_not()) {
+						grids[i].reverse_color();//点击时反转的宫格
+						judge_msg = i;
+						while (1) {
+							if (peekmessage(&msg, EX_MOUSE)) {
+								if (msg.message == WM_LBUTTONUP) {
+									i = 61;//使for函数停止遍历
+									break;
+								}
+								else { 
+									for (int j = 0; j <= 60; j++) {
+										if (judge_msg != j && grids[j].reverse_or_not()) {
+											grids[j].reverse_color();//滑动时反转的宫格
+											//如果不相邻将被视为作弊直接判负
+
+										    if (grids[judge_msg].get_circle() == 0) {
+											    //如果前一个宫格是中心宫格
+											    if (grids[j].get_circle() != 1)display_you_lose();
+										    }
+										    else if (grids[judge_msg].get_position() % grids[judge_msg].get_circle() == 0) {
+										        //如果前一个是角上的宫格
+										        
+										        if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
+										        	//如果在外圈
+													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() - 1) % (grids[j].get_circle() * 6)) {
+														display_you_lose();
+													}
+										        }
+										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
+										        	//如果在同一圈
+													if ((grids[j].get_position() != grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6)  && grids[j].get_position() != (grids[judge_msg].get_position() - 1) % (grids[j].get_circle() * 6)){
+														display_you_lose();
+													}
+										        }
+										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()+1) {
+										        	//如果在内圈
+													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6)) {
+														display_you_lose();
+													}
+										        }
+										        else {
+										        		display_you_lose();
+										        }
+										    }
+										    else {
+												//如果前一个是边上的宫格
+
+												if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
+													//如果在外圈
+													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()-1) % (grids[j].get_circle() * 6)) {
+														display_you_lose();
+													}
+												}
+												else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
+													//如果在同一圈
+													if (grids[j].get_position() != (grids[judge_msg].get_position() + 1)%(grids[j].get_circle()*6) && grids[j].get_position() != (grids[judge_msg].get_position() - 1) % (grids[j].get_circle() * 6)){
+														display_you_lose();
+													}
+												}
+												else if (grids[judge_msg].get_circle() == grids[j].get_circle() + 1) {
+													//如果在内圈
+													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6)) {
+														display_you_lose();
+													}
+												}
+											}
+											judge_msg = j;
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
