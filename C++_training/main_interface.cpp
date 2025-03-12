@@ -271,8 +271,11 @@ void display_load() {
 }
 
 void display_you_lose() {
+	cout << "you lose" << endl;
 	display_menu();
 }
+
+
 
 void display_play() {
 	//换背景
@@ -283,7 +286,7 @@ void display_play() {
 	//粘贴返回贴图
 	button_png(&back, 40, 40, wback, hback);
 
-	int deltax = 73, deltay = 39;//六边形紧密拼凑需要的横纵坐标差
+	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
 	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
 
 	//开始双缓冲绘图
@@ -296,13 +299,13 @@ void display_play() {
 		ygrid = y0 - i * 2 * deltay;
 		xgrid = x0;
 		for (int j = 0; j < 6 * i; j++) {
+			grids.emplace_back(xgrid, ygrid, i, j);
 			if (j / i == 0) { xgrid += deltax; ygrid += deltay; }
 			else if (j / i == 1) { ygrid += 2 * deltay; }
 			else if (j / i == 2) { xgrid -= deltax; ygrid += deltay; }
 			else if (j / i == 3) { xgrid -= deltax; ygrid -= deltay; }
 			else if (j / i == 4) { ygrid -= 2 * deltay; }
 			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
-			grids.emplace_back(xgrid, ygrid,i ,j);
 		}
 	}
 	//缓冲完毕开始绘图
@@ -332,35 +335,43 @@ void display_play() {
 									for (int j = 0; j <= 60; j++) {
 										if (judge_msg != j && grids[j].reverse_or_not()) {
 											grids[j].reverse_color();//滑动时反转的宫格
+
 											//如果不相邻将被视为作弊直接判负
 
-										    if (grids[judge_msg].get_circle() == 0) {
+                                            if(grids[judge_msg].get_circle() == 0) {
 											    //如果前一个宫格是中心宫格
-											    if (grids[j].get_circle() != 1)display_you_lose();
+												if (grids[j].get_circle() != 1) {
+													cout << 1 << endl;
+													display_you_lose(); 
+												}
 										    }
 										    else if (grids[judge_msg].get_position() % grids[judge_msg].get_circle() == 0) {
 										        //如果前一个是角上的宫格
 										        
 										        if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
 										        	//如果在外圈
-													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() - 1) % (grids[j].get_circle() * 6)) {
+													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)) {
+														cout << 2 << endl;
 														display_you_lose();
 													}
 										        }
 										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
 										        	//如果在同一圈
-													if ((grids[j].get_position() != grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6)  && grids[j].get_position() != (grids[judge_msg].get_position() - 1) % (grids[j].get_circle() * 6)){
-														display_you_lose();
+													if (grids[j].get_position() != (grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6)  && grids[j].get_position() != (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)){
+														cout << 3<<endl;
+														 display_you_lose();
 													}
 										        }
 										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()+1) {
 										        	//如果在内圈
-													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6)) {
+													if (grids[judge_msg].get_circle() !=1&&grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6)) {
+														cout << 4 << endl;
 														display_you_lose();
 													}
 										        }
 										        else {
-										        		display_you_lose();
+													cout << 5 << endl;
+													display_you_lose();
 										        }
 										    }
 										    else {
@@ -368,19 +379,22 @@ void display_play() {
 
 												if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
 													//如果在外圈
-													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()-1) % (grids[j].get_circle() * 6)) {
+													if (grids[j].get_position() != (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()+1) % (grids[j].get_circle() * 6)) {
+														cout << 6 << endl;
 														display_you_lose();
 													}
 												}
 												else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
 													//如果在同一圈
-													if (grids[j].get_position() != (grids[judge_msg].get_position() + 1)%(grids[j].get_circle()*6) && grids[j].get_position() != (grids[judge_msg].get_position() - 1) % (grids[j].get_circle() * 6)){
+													if (grids[j].get_position() != (grids[judge_msg].get_position() + 1)%(grids[j].get_circle()*6) && grids[j].get_position() != (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)){
+														cout << 7 << endl;
 														display_you_lose();
 													}
 												}
 												else if (grids[judge_msg].get_circle() == grids[j].get_circle() + 1) {
 													//如果在内圈
-													if (grids[j].get_position() != (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6)) {
+													if (grids[j].get_position() != (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) && grids[j].get_position() != (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()+ grids[j].get_circle() * 6 - 1) % (grids[j].get_circle() * 6)) {
+														cout << 8 << endl;
 														display_you_lose();
 													}
 												}
