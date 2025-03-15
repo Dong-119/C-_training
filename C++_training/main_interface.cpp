@@ -40,6 +40,7 @@ IMAGE title;
 IMAGE background,rule_background,play_background;
 IMAGE back;
 IMAGE quit, play, load, how_to_play, setting, pic, grid0,grid0_mask, grid1;
+//IMAGE *back_mask=&back+1;
 COLORREF color;
 
 //定义消息结构体变量
@@ -115,7 +116,7 @@ public:
 	}
 
 	bool reverse_or_not () {
-		if (msg.y - y > -1.732 * (msg.x - x - wgrid / 4) && msg.y > y && msg.y - y > 1.732 * (msg.x - x - 3 * wgrid / 4) && msg.y - y < 1.732 * (msg.x - x) && msg.y - y < 2 * 1.732 * wgrid / 4 && msg.y - y < -1.732 * (msg.x - x - 3 * wgrid / 4) + 2 * 1.732 * wgrid / 4) {
+		if (msg.y-y>-2*hgrid*(msg.x-x)/wgrid+hgrid/2 && msg.y-y>0 && msg.y-y>2*hgrid*(msg.x-x)/wgrid-3*hgrid/2 && msg.y-y<2*hgrid*(msg.x-x)/wgrid+hgrid/2 && msg.y-y<hgrid && msg.y-y<-2*hgrid*(msg.x-x)/wgrid+5*hgrid/2) {
 			return true;
 		}
 		else {
