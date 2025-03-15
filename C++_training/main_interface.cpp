@@ -131,7 +131,97 @@ public:
 	const int get_position() {
 		return position;
 	}
+
 };
+
+vector<Grid> grids;
+
+bool adjacent_or_not(int judge_msg,int j) {
+	if (judge_msg != j && grids[j].reverse_or_not()) {
+		//滑动时反转的宫格
+
+		if (grids[judge_msg].get_circle() == 0) {
+			//如果前一个宫格是中心宫格
+			if (grids[j].get_circle() == 1) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		else if (grids[judge_msg].get_position() % grids[judge_msg].get_circle() == 0) {
+			//如果前一个是角上的宫格
+
+			if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
+				//如果在外圈
+				if (grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
+				//如果在同一圈
+				if (grids[j].get_position() == (grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else if (grids[judge_msg].get_circle() == grids[j].get_circle() + 1) {
+				//如果在内圈
+				if (grids[judge_msg].get_circle() == 1 || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else {
+				return false;
+			}
+		}
+		else {
+			//如果前一个是边上的宫格
+
+			if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
+				//如果在外圈
+				if (grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
+				//如果在同一圈
+				if (grids[j].get_position() == (grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else if (grids[judge_msg].get_circle() == grids[j].get_circle() + 1) {
+				//如果在内圈
+				if (grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle() + grids[j].get_circle() * 6 - 1) % (grids[j].get_circle() * 6)) {
+					return true;
+				}
+				else {
+					return false;
+				}
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	else {
+		return false;
+	}
+}
 
 void display_menu(){
 	//主菜单背景图
@@ -275,9 +365,6 @@ void display_load() {
 	}
 }
 
-
-vector<Grid> grids;
-
 void display_you_lose() {
 	grids.clear();//析构所有宫格
 	cout << "you lose" << endl;
@@ -340,87 +427,10 @@ void display_play() {
 								}
 								else { 
 									for (int j = 0; j <= 60; j++) {
-										if (judge_msg != j && grids[j].reverse_or_not()) {
-											//滑动时反转的宫格
-
-                                            if(grids[judge_msg].get_circle() == 0) {
-											    //如果前一个宫格是中心宫格
-												if (grids[j].get_circle() == 1) {
-													grids[j].reverse_color();
-												}
-												else {
-													continue;
-												}
-										    }
-										    else if (grids[judge_msg].get_position() % grids[judge_msg].get_circle() == 0) {
-										        //如果前一个是角上的宫格
-										        
-										        if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
-										        	//如果在外圈
-													if (grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() + 1) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)) {
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-										        }
-										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
-										        	//如果在同一圈
-													if (grids[j].get_position() == (grids[judge_msg].get_position() + 1) % (grids[j].get_circle() * 6)  || grids[j].get_position() == (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)){
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-										        }
-										        else if (grids[judge_msg].get_circle() == grids[j].get_circle()+1) {
-										        	//如果在内圈
-													if (grids[judge_msg].get_circle() ==1 || grids[j].get_position() == (grids[j].get_circle() * grids[judge_msg].get_position() / grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6)) {
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-												}
-												else {
-													continue;
-												}
-										    }
-										    else {
-												//如果前一个是边上的宫格
-
-												if (grids[judge_msg].get_circle() == grids[j].get_circle() - 1) {
-													//如果在外圈
-													if (grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()+1) % (grids[j].get_circle() * 6)) {
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-												}
-												else if (grids[judge_msg].get_circle() == grids[j].get_circle()) {
-													//如果在同一圈
-													if (grids[j].get_position() == (grids[judge_msg].get_position() + 1)%(grids[j].get_circle()*6) || grids[j].get_position() == (grids[judge_msg].get_position() - 1 + grids[j].get_circle() * 6) % (grids[j].get_circle() * 6)){
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-												}
-												else if (grids[judge_msg].get_circle() == grids[j].get_circle() + 1) {
-													//如果在内圈
-													if (grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()) % (grids[j].get_circle() * 6) || grids[j].get_position() == (grids[judge_msg].get_position() / grids[judge_msg].get_circle() * grids[j].get_circle() + grids[judge_msg].get_position() % grids[judge_msg].get_circle()+ grids[j].get_circle() * 6 - 1) % (grids[j].get_circle() * 6)) {
-														grids[j].reverse_color();
-													}
-													else {
-														continue;
-													}
-												}
-												else {
-													continue;
-												}
-											}
+										if (adjacent_or_not(judge_msg,j)) {
+											grids[j].reverse_color();
 											judge_msg = j;
+											break;
 										}
 									}
 								}
