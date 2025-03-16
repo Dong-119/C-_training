@@ -25,6 +25,7 @@
 #pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
 
+
 inline void put_png(int x, int y, IMAGE* img)
 {//Ìùº¬Í¸Ã÷±³¾°µÄpng
 	int w = img->getwidth();
@@ -234,35 +235,35 @@ bool adjacent_or_not(int judge_msg,int j) {
 }
 
 void set_question_auto(int num) {
-	srand(time(NULL));
 	int* reverse = new int[num];
-	int container[6], recorder[61] = {0};
+	int container[6] = {0}, recorder[61] = { 0 };
 	int counter = 0;
 	int i = rand() % 61;
-	recorder[i] = 1;
 	for (int k=0;k<num;k++) {
+		recorder[i] = 1;
+		reverse[k] = i;
+		counter = 0;
 		for (int j = 0; j < 61; j++) {
 			if (!recorder[j]) {
 				if (adjacent_or_not(i, j)) {
 					container[counter] = j;
+					counter++;
 				}
-				counter++;
 			}
 		}
 		if (counter == 0&&k!=num-1) {
-			k = -1;
-			i = rand() % 61;
-			recorder[i] = 1;
-			continue;
+			set_question_auto(num);
+			goto end;
 		}
-		i = container[rand() % counter];
-		recorder[i] = 1;
-		reverse[k] = i;
-		counter = 0;
+		else if (k != num - 1) {
+			i = container[rand() % counter];
+		}
 	}
 	for (int k = 0; k < num; k++) {
 		grids[reverse[k]].reverse_set_question();
 	}
+end:
+	;
 }
 
 void display_menu(){
@@ -488,6 +489,7 @@ void display_play() {
 }
 
 int main() {
+	srand(time(NULL));
 	initgraph(w, h);
 	//¼ÓÔØÌùÍ¼
 	loadimage(&background, "assets//background.png", w, h);
