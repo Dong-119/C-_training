@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <graphics.h>
 #include <vector>
+#include <time.h>
 #include <conio.h>
 #pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
@@ -115,6 +116,15 @@ public:
 		}
 	}
 
+	void reverse_set_question() {
+		grid_color = !grid_color;
+		if (grid_color == false) {
+			putimage(x, y, &grid0_mask, NOTSRCERASE);
+			putimage(x, y, &grid0, SRCINVERT);
+		}
+		else { putimage(x, y, &grid1, SRCAND); }
+	}
+
 	bool reverse_or_not () {
 		if (msg.y-y>-2*hgrid*(msg.x-x)/wgrid+hgrid/2 && msg.y-y>0 && msg.y-y>2*hgrid*(msg.x-x)/wgrid-3*hgrid/2 && msg.y-y<2*hgrid*(msg.x-x)/wgrid+hgrid/2 && msg.y-y<hgrid && msg.y-y<-2*hgrid*(msg.x-x)/wgrid+5*hgrid/2) {
 			return true;
@@ -137,9 +147,9 @@ public:
 vector<Grid> grids;
 
 bool adjacent_or_not(int judge_msg,int j) {
-	if (judge_msg != j && grids[j].reverse_or_not()) {
-		//滑动时反转的宫格
+	//如果j与judge_msg相邻返回ture
 
+	if (judge_msg != j) {
 		if (grids[judge_msg].get_circle() == 0) {
 			//如果前一个宫格是中心宫格
 			if (grids[j].get_circle() == 1) {
@@ -220,6 +230,38 @@ bool adjacent_or_not(int judge_msg,int j) {
 	}
 	else {
 		return false;
+	}
+}
+
+void set_question_auto(int num) {
+	srand(time(NULL));
+	int* reverse = new int[num];
+	int container[6], recorder[61] = {0};
+	int counter = 0;
+	int i = rand() % 61;
+	recorder[i] = 1;
+	for (int k=0;k<num;k++) {
+		for (int j = 0; j < 61; j++) {
+			if (!recorder[j]) {
+				if (adjacent_or_not(i, j)) {
+					container[counter] = j;
+				}
+				counter++;
+			}
+		}
+		if (counter == 0&&k!=num-1) {
+			k = -1;
+			i = rand() % 61;
+			recorder[i] = 1;
+			continue;
+		}
+		i = container[rand() % counter];
+		recorder[i] = 1;
+		reverse[k] = i;
+		counter = 0;
+	}
+	for (int k = 0; k < num; k++) {
+		grids[reverse[k]].reverse_set_question();
 	}
 }
 
@@ -405,6 +447,8 @@ void display_play() {
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 	
+	set_question_auto(25);
+
 	//持续捕捉鼠标信息
 	int judge_msg;
 	while (1) {
@@ -427,7 +471,7 @@ void display_play() {
 								}
 								else { 
 									for (int j = 0; j <= 60; j++) {
-										if (adjacent_or_not(judge_msg,j)) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg,j)) {
 											grids[j].reverse_color();
 											judge_msg = j;
 											break;
