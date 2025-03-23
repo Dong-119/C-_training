@@ -259,6 +259,15 @@ void set_question_auto(int num) {
 			i = container[rand() % counter];
 		}
 	}
+	for (int k = 0; k < 5; k++) {
+		if (rand() % 2) {
+			for (int l = 0; l < 61; l++) {
+				if (grids[l].get_circle() == k) {
+					grids[l].reverse_set_question();
+				}
+			}
+		}
+	}
 	for (int k = 0; k < num; k++) {
 		grids[reverse[k]].reverse_set_question();
 	}
@@ -448,7 +457,7 @@ void display_play() {
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 	
-	set_question_auto(25);
+	set_question_auto(rand()%11+20);
 
 	//持续捕捉鼠标信息
 	int judge_msg;
