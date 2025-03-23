@@ -22,16 +22,17 @@
 #include <vector>
 #include <time.h>
 #include <conio.h>
-#pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
 
+void put_png(int x, int y, IMAGE* img) {
+	//贴图无白色
+	putimage(x, y, img, SRCAND);
+}
 
-inline void put_png(int x, int y, IMAGE* img)
-{//贴含透明背景的png
-	int w = img->getwidth();
-	int h = img->getheight();
-	AlphaBlend(GetImageHDC(NULL), x, y, w, h,
-		GetImageHDC(img), 0, 0, w, h, { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+void put_png(int x, int y, IMAGE* img,IMAGE* img_mask) {
+	//贴图有白色，需掩码图
+	putimage(x, y, img_mask, NOTSRCERASE);
+	putimage(x, y, img, SRCINVERT);
 }
 
 //设置画布参数
@@ -40,8 +41,9 @@ int w = 1360, h = 765;
 //声明背景图和贴图
 IMAGE title;
 IMAGE background,rule_background,play_background;
-IMAGE back;
-IMAGE quit, play, load, how_to_play, setting, pic, grid0,grid0_mask, grid1;
+IMAGE back,back_mask;
+IMAGE quit, play, load, how_to_play, setting, pic, pic_mask, grid0,grid0_mask, grid1;
+IMAGE button_mask;
 //IMAGE *back_mask=&back+1;
 COLORREF color;
 
@@ -59,24 +61,24 @@ void display_load();
 void display_play();
 void display_you_lose();
 
-void button_png(IMAGE* png,int x,int y,int width,int height) {
-	//把png图以宽weight高height放在background为背景的位置上，扣掉与第一块像素颜色相同部分
-	IMAGE sum,sumpng=* png;
-	getimage(&sum, x, y, width, height);
-	putimage(x, y, png);
-	COLORREF judge = getpixel(x, y);
-	for (int i = x; i <= x+width; i++) {
-		for (int j = y; j <= y+height; j++) {
-			if(getpixel(i,j)== judge){
-				putimage(x, y, &sum);
-				COLORREF color = getpixel(i, j);
-				putimage(x, y, &sumpng);
-				putpixel(i, j, color);
-				getimage(&sumpng, x, y, width, height);
-			}
-		}
-	}
-}
+//void button_png(IMAGE* png,int x,int y,int width,int height) {
+//	//把png图以宽weight高height放在background为背景的位置上，扣掉与第一块像素颜色相同部分
+//	IMAGE sum,sumpng=* png;
+//	getimage(&sum, x, y, width, height);
+//	putimage(x, y, png);
+//	COLORREF judge = getpixel(x, y);
+//	for (int i = x; i <= x+width; i++) {
+//		for (int j = y; j <= y+height; j++) {
+//			if(getpixel(i,j)== judge){
+//				putimage(x, y, &sum);
+//				COLORREF color = getpixel(i, j);
+//				putimage(x, y, &sumpng);
+//				putpixel(i, j, color);
+//				getimage(&sumpng, x, y, width, height);
+//			}
+//		}
+//	}
+//}
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -143,6 +145,9 @@ public:
 		return position;
 	}
 
+	const bool get_color() {
+		return color;
+	}
 };
 
 vector<Grid> grids;
@@ -275,6 +280,29 @@ end:
 	;
 }
 
+bool complete_or_not() {
+	for (int i = 1; i < 5; i++) {
+		for (int j = 1; j < 61; j++) {
+			if (grids[j].get_circle() == i&& grids[j+1].get_circle() == i) {
+				if (grids[j].get_color() != grids[j + 1].get_color()) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
+IMAGE pop_up, pop_up_mask, pop_up_frame, pop_up_frame_mask;
+void you_win() {
+	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
+	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
+	loadimage(&pop_up_frame, "assets//pop_up_frame.png", 0, 0);
+	loadimage(&pop_up_frame_mask, "assets//pop_up_frame_mask.png", 0, 0);
+	put_png((w - pop_up.getwidth()) / 2, (h - pop_up.getwidth()) / 2, &pop_up, &pop_up_mask);
+	put_png((w - pop_up_frame.getwidth()) / 2, (h - pop_up_frame.getwidth()) / 2, &pop_up_frame, &pop_up_frame_mask);
+}
+
 void display_menu(){
 	//主菜单背景图
 	putimage(0, 0, &background);
@@ -286,23 +314,18 @@ void display_menu(){
 	int xhow_to_play = xplay, yhow_to_play = yplay + 2 * (h - yplay) / 4;
 	int xsetting = xplay, ysetting = yplay + 3 * (h - yplay) / 4;
 
-	//开始双缓冲绘图
-	BeginBatchDraw();
 	//根据第一个按键位置放置标题
 	settextstyle(200, 0, "华文行楷", 0, 0, 200, false, false, false);
 	loadimage(&title, "assets//title.png", textwidth("提笔乾坤"), textheight("提笔乾坤"));
-	//put_png((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title);
 	putimage((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title, SRCAND);
-	put_png(xplay + wbutton + 200, yplay - 80, &pic);
+	put_png(xplay + wbutton + 200, yplay - 80, &pic, &pic_mask);
 
 	//放置按键贴图
 	putimage(xquit, yquit, &quit);
-	put_png( xplay, yplay, &play);//putimage(xplay, yplay, &play);
-	put_png(xload, yload, &load);//putimage(xload, yload, &load);
-	put_png( xhow_to_play, yhow_to_play, &how_to_play);// putimage(xhow_to_play, yhow_to_play, &how_to_play);
-	put_png( xsetting, ysetting, &setting); //putimage(xsetting, ysetting, &setting);
-	//缓冲完毕开始绘图
-	EndBatchDraw();
+	put_png( xplay, yplay, &play, &button_mask);
+	put_png(xload, yload, &load, &button_mask);
+	put_png( xhow_to_play, yhow_to_play, &how_to_play, &button_mask);
+	put_png( xsetting, ysetting, &setting, &button_mask);
 
     settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
@@ -346,7 +369,7 @@ void display_how_to_play() {
 	putimage(0, 0, &rule_background);
 
 	//粘贴返回贴图
-	button_png(&back, 40, 40, wback, hback);
+	put_png(40, 40, &back,&back_mask);
 
 	//写字
 	settextstyle(120, 0, "华文行楷", 0, 0, 200, false, false, false);
@@ -387,7 +410,7 @@ void display_how_to_play() {
 
 void display_setting() {
 	//粘贴返回贴图
-	button_png(&back, 40, 40, wback, hback);
+	put_png(40, 40, &back, &back_mask);
 
 	//持续捕捉鼠标信息
 	while (1) {
@@ -403,7 +426,7 @@ void display_setting() {
 
 void display_load() {
 	//粘贴返回贴图
-	button_png(&back, 40, 40, wback, hback);
+	put_png(40, 40, &back, &back_mask);
 
 	//持续捕捉鼠标信息
 	while (1) {
@@ -431,7 +454,7 @@ void display_play() {
 	putimage(0, 0, &play_background);
 
 	//粘贴返回贴图
-	button_png(&back, 40, 40, wback, hback);
+	put_png(40, 40, &back, &back_mask);
 
 	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
 	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
@@ -508,10 +531,13 @@ int main() {
 	loadimage(&how_to_play, "assets//UItemplate1.png", wbutton, hbutton);
 	loadimage(&setting, "assets//UItemplate1.png", wbutton, hbutton);
 	loadimage(&back, "assets//back.png", wback, hback);//载入返回贴图
+	loadimage(&back_mask, "assets//back_mask.png", wback, hback);
 	loadimage(&pic, "assets//menu_pic.png", 500, 500);
+	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
 	loadimage(&grid0, "assets//grid0.png", 0, 0);
 	loadimage(&grid0_mask, "assets//grid0_mask.png", 0, 0);
 	loadimage(&grid1, "assets//grid1.png", 0, 0);
+	loadimage(&button_mask, "assets//UItemplate_mask.png", wbutton, hbutton);
 
 	//主菜单
 	display_menu();
