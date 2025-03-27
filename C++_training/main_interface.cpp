@@ -59,26 +59,8 @@ void display_how_to_play();
 void display_setting();
 void display_load();
 void display_play();
-void display_you_lose();
-
-//void button_png(IMAGE* png,int x,int y,int width,int height) {
-//	//把png图以宽weight高height放在background为背景的位置上，扣掉与第一块像素颜色相同部分
-//	IMAGE sum,sumpng=* png;
-//	getimage(&sum, x, y, width, height);
-//	putimage(x, y, png);
-//	COLORREF judge = getpixel(x, y);
-//	for (int i = x; i <= x+width; i++) {
-//		for (int j = y; j <= y+height; j++) {
-//			if(getpixel(i,j)== judge){
-//				putimage(x, y, &sum);
-//				COLORREF color = getpixel(i, j);
-//				putimage(x, y, &sumpng);
-//				putpixel(i, j, color);
-//				getimage(&sumpng, x, y, width, height);
-//			}
-//		}
-//	}
-//}
+void you_win();
+void you_lose();
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -115,7 +97,7 @@ public:
 			reversed_time++;
 		}
 		else {
-			display_you_lose();
+			you_lose();
 		}
 	}
 
@@ -146,7 +128,7 @@ public:
 	}
 
 	const bool get_color() {
-		return color;
+		return grid_color;
 	}
 };
 
@@ -281,12 +263,10 @@ end:
 }
 
 bool complete_or_not() {
-	for (int i = 1; i < 5; i++) {
-		for (int j = 1; j < 61; j++) {
-			if (grids[j].get_circle() == i&& grids[j+1].get_circle() == i) {
-				if (grids[j].get_color() != grids[j + 1].get_color()) {
-					return false;
-				}
+	for (int j = 1; j < 60; j++) {
+		if (grids[j].get_circle() == grids[j+1].get_circle()) {
+			if (grids[j].get_color() != grids[j + 1].get_color()) {
+				return false;
 			}
 		}
 	}
@@ -299,9 +279,16 @@ void you_win() {
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
 	loadimage(&pop_up_frame, "assets//pop_up_frame.png", 0, 0);
 	loadimage(&pop_up_frame_mask, "assets//pop_up_frame_mask.png", 0, 0);
-	put_png((w - pop_up.getwidth()) / 2, (h - pop_up.getwidth()) / 2, &pop_up, &pop_up_mask);
-	put_png((w - pop_up_frame.getwidth()) / 2, (h - pop_up_frame.getwidth()) / 2, &pop_up_frame, &pop_up_frame_mask);
+	put_png((w - pop_up.getwidth()) / 2, (h - pop_up.getheight()) / 2, &pop_up, &pop_up_mask);
+	put_png((w - pop_up_frame.getwidth()) / 2, (h - pop_up_frame.getheight()) / 2, &pop_up_frame, &pop_up_frame_mask);
 }
+
+void you_lose() {
+	grids.clear();//析构所有宫格
+	cout << "you lose" << endl;
+	display_menu();
+}
+
 
 void display_menu(){
 	//主菜单背景图
@@ -440,12 +427,6 @@ void display_load() {
 	}
 }
 
-void display_you_lose() {
-	grids.clear();//析构所有宫格
-	cout << "you lose" << endl;
-	display_menu();
-}
-
 
 void display_play() {
 	//换背景
@@ -499,6 +480,9 @@ void display_play() {
 						while (1) {
 							if (peekmessage(&msg, EX_MOUSE)) {
 								if (msg.message == WM_LBUTTONUP) {
+									if (complete_or_not()) {
+										you_win();
+									}
 									i = 61;//使for函数停止遍历
 									break;
 								}
