@@ -277,10 +277,7 @@ IMAGE pop_up, pop_up_mask, pop_up_frame, pop_up_frame_mask;
 void you_win() {
 	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
-	loadimage(&pop_up_frame, "assets//pop_up_frame.png", 0, 0);
-	loadimage(&pop_up_frame_mask, "assets//pop_up_frame_mask.png", 0, 0);
 	put_png((w - pop_up.getwidth()) / 2, (h - pop_up.getheight()) / 2, &pop_up, &pop_up_mask);
-	put_png((w - pop_up_frame.getwidth()) / 2, (h - pop_up_frame.getheight()) / 2, &pop_up_frame, &pop_up_frame_mask);
 }
 
 void you_lose() {
