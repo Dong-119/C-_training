@@ -69,6 +69,58 @@ void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const c
 	outtextxy(xtop_left + xchar, ytop_left + ychar, str);
 }
 
+class button {
+private:
+	int x, y;//位置
+	int w, h;//长宽
+	IMAGE button_nor, button_nor_mask, button_over, button_over_mask;
+	char* word;
+	bool state=false;//false代表鼠标不在按键上
+public:
+	void set_str(char* word) {
+		center_text(w, h, x, y, word);
+	}
+
+	void set_button(int x,int y,IMAGE* nor,IMAGE* nor_mask,char* word){
+		this->x = x;
+		this->y = y;
+		w = (*nor).getwidth();
+		h = (*nor).getheight();
+		put_png(x, y, nor, nor_mask);
+		set_str(word);
+	}
+
+	bool over_or_not() {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	void act_button(void (*f)()) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			//对光标是否在按钮上作出反应
+			if (over_or_not() && over_or_not() != state) {
+				put_png(x, y, &button_over, &button_over_mask);
+				set_str(word);
+			}
+			else if(!over_or_not() && over_or_not() != state){
+				put_png(x, y, &button_nor, &button_nor_mask);
+				set_str(word);
+			}
+
+			//按钮跳转功能
+			if (msg.message == WM_LBUTTONDOWN) {
+				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+					f();//点击按钮将会跳转至指定函数
+				}
+			}
+		}
+	}
+};
+
 class Grid {
 private:
 	int x, y;//位置
