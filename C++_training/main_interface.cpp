@@ -71,23 +71,46 @@ void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const c
 
 class button {
 private:
-	int x, y;//位置
-	int w, h;//长宽
+	int x=0, y=0;//位置
+	int w=10, h=10;//长宽
 	IMAGE button_nor, button_nor_mask, button_over, button_over_mask;
-	char* word;
 	bool state=false;//false代表鼠标不在按键上
 public:
-	void set_str(char* word) {
-		center_text(w, h, x, y, word);
+	void set_str(const char str[]) {
+		center_text(w, h, x, y, str);
 	}
 
-	void set_button(int x,int y,IMAGE* nor,IMAGE* nor_mask,char* word){
+	button (int x,int y, LPCTSTR img, LPCTSTR img_mask, LPCTSTR img_over, LPCTSTR img_over_mask, const char str[]){
 		this->x = x;
 		this->y = y;
-		w = (*nor).getwidth();
-		h = (*nor).getheight();
-		put_png(x, y, nor, nor_mask);
-		set_str(word);
+		loadimage(&button_nor, img, 0, 0);
+		loadimage(&button_nor_mask, img_mask, 0, 0);
+		loadimage(&button_over, img_over, 0, 0);
+		loadimage(&button_over_mask, img_over_mask, 0, 0);
+		w = button_nor.getwidth();
+		h = button_nor_mask.getheight();
+		put_png(x, y, &button_nor, &button_nor_mask);
+		set_str(str);
+	}
+
+	button(int x, int y, LPCTSTR img, LPCTSTR img_mask) {
+		this->x = x;
+		this->y = y;
+		loadimage(&button_nor, img, 0, 0);
+		loadimage(&button_nor_mask, img_mask, 0, 0);
+		w = button_nor.getwidth();
+		h = button_nor_mask.getheight();
+		put_png(x, y, &button_nor, &button_nor_mask);
+	}
+
+	button(int x, int y,int w,int h, LPCTSTR img, LPCTSTR img_mask) {
+		this->x = x;
+		this->y = y;
+		this->w = w;
+		this->h = h;
+		loadimage(&button_nor, img, w, h);
+		loadimage(&button_nor_mask, img_mask, w, h);
+		put_png(x, y, &button_nor, &button_nor_mask);
 	}
 
 	bool over_or_not() {
@@ -99,16 +122,46 @@ public:
 		}
 	}
 
-	void act_button(void (*f)()) {
+	void act_button_over(void f()) {
 		if (peekmessage(&msg, EX_MOUSE)) {
 			//对光标是否在按钮上作出反应
 			if (over_or_not() && over_or_not() != state) {
 				put_png(x, y, &button_over, &button_over_mask);
-				set_str(word);
 			}
 			else if(!over_or_not() && over_or_not() != state){
 				put_png(x, y, &button_nor, &button_nor_mask);
-				set_str(word);
+			}
+
+			//按钮跳转功能
+			if (msg.message == WM_LBUTTONDOWN) {
+				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+					f();//点击按钮将会跳转至指定函数
+				}
+			}
+		}
+	}
+
+	void act_button(void f()) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			//按钮跳转功能
+			if (msg.message == WM_LBUTTONDOWN) {
+				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+					f();//点击按钮将会跳转至指定函数
+				}
+			}
+		}
+	}
+
+	void act_button(void f(),const char str[]) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			//对光标是否在按钮上作出反应
+			if (over_or_not() && over_or_not() != state) {
+				put_png(x, y, &button_over, &button_over_mask);
+				set_str(str);
+			}
+			else if (!over_or_not() && over_or_not() != state) {
+				put_png(x, y, &button_nor, &button_nor_mask);
+				set_str(str);
 			}
 
 			//按钮跳转功能
@@ -358,7 +411,7 @@ void display_menu(){
 
 	//放置按键贴图
 	putimage(xquit, yquit, &quit);
-	put_png( xplay, yplay, &play, &button_mask);
+	button play(xplay, yplay,wbutton,hbutton, "assets//UItemplate2.png", "assets//UItemplate_mask.png");
 	put_png(xload, yload, &load, &button_mask);
 	put_png( xhow_to_play, yhow_to_play, &how_to_play, &button_mask);
 	put_png( xsetting, ysetting, &setting, &button_mask);
@@ -376,14 +429,15 @@ void display_menu(){
 	
 	//持续捕捉鼠标信息
 	while (1) {
+		play.act_button(display_play);
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				if ((msg.x > xquit && msg.x < xquit + wquit) && (msg.y > yquit && msg.y < yquit + hquit)) {
 					exit(0);//点击退出按钮将会结束进程        
 				}
-				if ((msg.x > xplay && msg.x < xplay + wbutton) && (msg.y > yplay && msg.y < yplay + hbutton)) {
-					display_play();//点击开始游戏按钮将会跳转至游戏界面
-				}
+				//if ((msg.x > xplay && msg.x < xplay + wbutton) && (msg.y > yplay && msg.y < yplay + hbutton)) {
+				//	display_play();//点击开始游戏按钮将会跳转至游戏界面
+				//}
 				if ((msg.x > xload && msg.x < xload + wbutton) && (msg.y > yload && msg.y < yload + hbutton)) {
 					display_load();//点击读档按钮将会跳转至读档（主菜单）界面
 				}
