@@ -72,45 +72,13 @@ void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const c
 class button {
 private:
 	int x=0, y=0;//位置
-	int w=10, h=10;//长宽
-	IMAGE button_nor, button_nor_mask, button_over, button_over_mask;
-	bool state=false;//false代表鼠标不在按键上
-public:
-	void set_str(const char str[]) {
-		center_text(w, h, x, y, str);
-	}
+	int w=0, h=0;//长宽
+	IMAGE button_nor, button_mask, button_over;
+	string word;
+	bool state = false;//false代表鼠标不在按键上
 
-	button (int x,int y, LPCTSTR img, LPCTSTR img_mask, LPCTSTR img_over, LPCTSTR img_over_mask, const char str[]){
-		this->x = x;
-		this->y = y;
-		loadimage(&button_nor, img, 0, 0);
-		loadimage(&button_nor_mask, img_mask, 0, 0);
-		loadimage(&button_over, img_over, 0, 0);
-		loadimage(&button_over_mask, img_over_mask, 0, 0);
-		w = button_nor.getwidth();
-		h = button_nor_mask.getheight();
-		put_png(x, y, &button_nor, &button_nor_mask);
-		set_str(str);
-	}
-
-	button(int x, int y, LPCTSTR img, LPCTSTR img_mask) {
-		this->x = x;
-		this->y = y;
-		loadimage(&button_nor, img, 0, 0);
-		loadimage(&button_nor_mask, img_mask, 0, 0);
-		w = button_nor.getwidth();
-		h = button_nor_mask.getheight();
-		put_png(x, y, &button_nor, &button_nor_mask);
-	}
-
-	button(int x, int y,int w,int h, LPCTSTR img, LPCTSTR img_mask) {
-		this->x = x;
-		this->y = y;
-		this->w = w;
-		this->h = h;
-		loadimage(&button_nor, img, w, h);
-		loadimage(&button_nor_mask, img_mask, w, h);
-		put_png(x, y, &button_nor, &button_nor_mask);
+	void set_str(const char* word) {
+		center_text(w, h, x, y, word);
 	}
 
 	bool over_or_not() {
@@ -121,55 +89,62 @@ public:
 			return false;
 		}
 	}
+public:
+	button(int x, int y, int w, int h, LPCTSTR img, LPCTSTR img_over) {
+		this->x = x;
+		this->y = y;
+		loadimage(&button_nor,img, w, h);
+		loadimage(&button_over, img_over, w, h);
+		this->w = w;
+		this->h = h;
+		putimage(x, y, &button_nor);
+	}
 
-	void act_button_over(void f()) {
-		if (peekmessage(&msg, EX_MOUSE)) {
-			//对光标是否在按钮上作出反应
-			if (over_or_not() && over_or_not() != state) {
-				put_png(x, y, &button_over, &button_over_mask);
-			}
-			else if(!over_or_not() && over_or_not() != state){
-				put_png(x, y, &button_nor, &button_nor_mask);
-			}
+	button(int x, int y, int w, int h, LPCTSTR img, LPCTSTR img_over, LPCTSTR img_mask, const string str) {
+		this->x = x;
+		this->y = y;
+		loadimage(&button_nor, img, w, h);
+		loadimage(&button_mask, img_mask, w, h);
+		loadimage(&button_over, img_over, w, h);
+		this->w = w;
+		this->h = h;
+		put_png(x, y, &button_nor, &button_mask);
+		word = str.c_str();
+		set_str(word.c_str());
+	}
 
-			//按钮跳转功能
-			if (msg.message == WM_LBUTTONDOWN) {
-				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-					f();//点击按钮将会跳转至指定函数
-				}
+	void act_over_mask() {
+		if (over_or_not() == !state) {
+			state = !(state);
+			if (state) {
+				put_png(x, y, &button_over, &button_mask);
+				set_str(word.c_str());
+			}
+			else {
+				put_png(x, y, &button_nor, &button_mask);
+				set_str(word.c_str());
+			}
+		}
+	}
+
+	void act_over() {
+		if (over_or_not() == !state) {
+			state = !(state);
+			if (state) {
+				putimage(x, y, &button_over);
+				set_str(word.c_str());
+			}
+			else {
+				putimage(x, y, &button_nor);
+				set_str(word.c_str());
 			}
 		}
 	}
 
 	void act_button(void f()) {
-		if (peekmessage(&msg, EX_MOUSE)) {
-			//按钮跳转功能
-			if (msg.message == WM_LBUTTONDOWN) {
-				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-					f();//点击按钮将会跳转至指定函数
-				}
-			}
-		}
-	}
-
-	void act_button(void f(),const char str[]) {
-		if (peekmessage(&msg, EX_MOUSE)) {
-			//对光标是否在按钮上作出反应
-			if (over_or_not() && over_or_not() != state) {
-				put_png(x, y, &button_over, &button_over_mask);
-				set_str(str);
-			}
-			else if (!over_or_not() && over_or_not() != state) {
-				put_png(x, y, &button_nor, &button_nor_mask);
-				set_str(str);
-			}
-
-			//按钮跳转功能
-			if (msg.message == WM_LBUTTONDOWN) {
-				if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-					f();//点击按钮将会跳转至指定函数
-				}
-			}
+		//按钮跳转功能
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			f();//点击按钮将会跳转至指定函数
 		}
 	}
 };
@@ -391,7 +366,9 @@ void you_lose() {
 	display_menu();
 }
 
-
+void exit() {
+	exit(0);
+}
 void display_menu(){
 	//主菜单背景图
 	putimage(0, 0, &background);
@@ -410,43 +387,54 @@ void display_menu(){
 	put_png(xplay + wbutton + 200, yplay - 80, &pic, &pic_mask);
 
 	//放置按键贴图
-	putimage(xquit, yquit, &quit);
-	button play(xplay, yplay,wbutton,hbutton, "assets//UItemplate2.png", "assets//UItemplate_mask.png");
-	put_png(xload, yload, &load, &button_mask);
-	put_png( xhow_to_play, yhow_to_play, &how_to_play, &button_mask);
-	put_png( xsetting, ysetting, &setting, &button_mask);
+	//putimage(xquit, yquit, &quit);
+	button quit(xquit, yquit,wquit,hquit, "assets//quit.jpg", "assets//quit_over.png");
 
-    settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
 	setbkmode(TRANSPARENT);
-	center_text(wbutton, hbutton, xplay, yplay, "新游戏");
+	button play(xplay, yplay, wbutton, hbutton, "assets//UItemplate2.png", "assets//UItemplate2_over.png", "assets//UItemplate_mask.png","新游戏");
+	
 	settextcolor(BLACK);
-	center_text(wbutton, hbutton, xload, yload, "继续游戏");
-	center_text(wbutton, hbutton, xhow_to_play, yhow_to_play, "游戏规则");
-	center_text(wbutton, hbutton, xsetting, ysetting, "设置");
+	button load(xload, yload, wbutton, hbutton, "assets//UItemplate1.png", "assets//UItemplate1_over.png", "assets//UItemplate_mask.png", "继续游戏");
+	button how_to_play(xhow_to_play, yhow_to_play, wbutton, hbutton, "assets//UItemplate1.png", "assets//UItemplate1_over.png", "assets//UItemplate_mask.png", "游戏规则");
+	button setting(xsetting, ysetting, wbutton, hbutton, "assets//UItemplate1.png", "assets//UItemplate1_over.png", "assets//UItemplate_mask.png", "设置");
 
 	//主菜单页面消息处理
 	
 	//持续捕捉鼠标信息
 	while (1) {
-		play.act_button(display_play);
 		if (peekmessage(&msg, EX_MOUSE)) {
+			settextcolor(WHITE);
+			play.act_over_mask();
+
+			settextcolor(BLACK);
+			load.act_over_mask();
+			how_to_play.act_over_mask();
+			setting.act_over_mask();
+
+			quit.act_over();
 			if (msg.message == WM_LBUTTONDOWN) {
-				if ((msg.x > xquit && msg.x < xquit + wquit) && (msg.y > yquit && msg.y < yquit + hquit)) {
-					exit(0);//点击退出按钮将会结束进程        
-				}
-				//if ((msg.x > xplay && msg.x < xplay + wbutton) && (msg.y > yplay && msg.y < yplay + hbutton)) {
-				//	display_play();//点击开始游戏按钮将会跳转至游戏界面
+				play.act_button(display_play);
+				load.act_button(display_load);
+				how_to_play.act_button(display_how_to_play);
+				setting.act_button(display_setting);
+				quit.act_button(exit);
+				//if ((msg.x > xquit && msg.x < xquit + wquit) && (msg.y > yquit && msg.y < yquit + hquit)) {
+				//	exit(0);//点击退出按钮将会结束进程        
 				//}
-				if ((msg.x > xload && msg.x < xload + wbutton) && (msg.y > yload && msg.y < yload + hbutton)) {
-					display_load();//点击读档按钮将会跳转至读档（主菜单）界面
-				}
-				if ((msg.x > xhow_to_play && msg.x < xhow_to_play + wbutton) && (msg.y > yhow_to_play && msg.y < yhow_to_play + hbutton)) {
-					display_how_to_play();//点击游戏规则按钮将会跳转至游戏规则界面
-				}
-				if ((msg.x > xsetting && msg.x < xsetting + wbutton) && (msg.y > ysetting && msg.y < ysetting + hbutton)) {
-					display_setting();//点击设置按钮将会跳转至设置界面
-				}
+				////if ((msg.x > xplay && msg.x < xplay + wbutton) && (msg.y > yplay && msg.y < yplay + hbutton)) {
+				////	display_play();//点击开始游戏按钮将会跳转至游戏界面
+				////}
+				//if ((msg.x > xload && msg.x < xload + wbutton) && (msg.y > yload && msg.y < yload + hbutton)) {
+				//	display_load();//点击读档按钮将会跳转至读档（主菜单）界面
+				//}
+				//if ((msg.x > xhow_to_play && msg.x < xhow_to_play + wbutton) && (msg.y > yhow_to_play && msg.y < yhow_to_play + hbutton)) {
+				//	display_how_to_play();//点击游戏规则按钮将会跳转至游戏规则界面
+				//}
+				//if ((msg.x > xsetting && msg.x < xsetting + wbutton) && (msg.y > ysetting && msg.y < ysetting + hbutton)) {
+				//	display_setting();//点击设置按钮将会跳转至设置界面
+				//}
 			}
 		}
 	}
@@ -613,10 +601,7 @@ int main() {
 	//加载贴图
 	loadimage(&background, "assets//background.png", w, h);
 	loadimage(&quit, "assets//quit.jpg", wquit, hquit);
-	loadimage(&play, "assets//UItemplate2.png", wbutton, hbutton);
-	loadimage(&load, "assets//UItemplate1.png", wbutton, hbutton);
-	loadimage(&how_to_play, "assets//UItemplate1.png", wbutton, hbutton);
-	loadimage(&setting, "assets//UItemplate1.png", wbutton, hbutton);
+	
 	loadimage(&back, "assets//back.png", wback, hback);//载入返回贴图
 	loadimage(&back_mask, "assets//back_mask.png", wback, hback);
 	loadimage(&pic, "assets//menu_pic.png", 500, 500);
