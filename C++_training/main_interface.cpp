@@ -113,6 +113,17 @@ public:
 		set_str(word.c_str());
 	}
 
+	button(int x, int y, int w, int h, LPCTSTR img, LPCTSTR img_over, LPCTSTR img_mask) {
+		this->x = x;
+		this->y = y;
+		loadimage(&button_nor, img, w, h);
+		loadimage(&button_mask, img_mask, w, h);
+		loadimage(&button_over, img_over, w, h);
+		this->w = w;
+		this->h = h;
+		put_png(x, y, &button_nor, &button_mask);
+	}
+
 	void act_over_mask() {
 		if (over_or_not() == !state) {
 			state = !(state);
@@ -387,7 +398,6 @@ void display_menu(){
 	put_png(xplay + wbutton + 200, yplay - 80, &pic, &pic_mask);
 
 	//放置按键贴图
-	//putimage(xquit, yquit, &quit);
 	button quit(xquit, yquit,wquit,hquit, "assets//quit.jpg", "assets//quit_over.png");
 
 	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
@@ -420,21 +430,6 @@ void display_menu(){
 				how_to_play.act_button(display_how_to_play);
 				setting.act_button(display_setting);
 				quit.act_button(exit);
-				//if ((msg.x > xquit && msg.x < xquit + wquit) && (msg.y > yquit && msg.y < yquit + hquit)) {
-				//	exit(0);//点击退出按钮将会结束进程        
-				//}
-				////if ((msg.x > xplay && msg.x < xplay + wbutton) && (msg.y > yplay && msg.y < yplay + hbutton)) {
-				////	display_play();//点击开始游戏按钮将会跳转至游戏界面
-				////}
-				//if ((msg.x > xload && msg.x < xload + wbutton) && (msg.y > yload && msg.y < yload + hbutton)) {
-				//	display_load();//点击读档按钮将会跳转至读档（主菜单）界面
-				//}
-				//if ((msg.x > xhow_to_play && msg.x < xhow_to_play + wbutton) && (msg.y > yhow_to_play && msg.y < yhow_to_play + hbutton)) {
-				//	display_how_to_play();//点击游戏规则按钮将会跳转至游戏规则界面
-				//}
-				//if ((msg.x > xsetting && msg.x < xsetting + wbutton) && (msg.y > ysetting && msg.y < ysetting + hbutton)) {
-				//	display_setting();//点击设置按钮将会跳转至设置界面
-				//}
 			}
 		}
 	}
@@ -447,7 +442,7 @@ void display_how_to_play() {
 	putimage(0, 0, &rule_background);
 
 	//粘贴返回贴图
-	put_png(40, 40, &back,&back_mask);
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	//写字
 	settextstyle(120, 0, "华文行楷", 0, 0, 200, false, false, false);
@@ -473,11 +468,10 @@ void display_how_to_play() {
 
 	//持续捕捉鼠标信息
 	while (1) {
+		back.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
-				if ((msg.x > 40 && msg.x < 40 + wback) && (msg.y > 40 && msg.y < 40 + hback)) {
-					display_menu();//点击返回按钮将会返回主菜单
-				}
+				back.act_button(display_menu);
 				if ((msg.x > 100 + (w - textwidth("开始游戏") - 100) / 2 && msg.x < w - (w - 100 - textwidth("开始游戏")) / 2) && (msg.y > 3 * h / 4 + (h / 4 - textheight("开始游戏")) / 2 && msg.y < h - (h / 4 - textheight("开始游戏")) / 2)) {
 					display_play();//点击开始游戏按钮将会跳转至游戏界面
 				}
@@ -488,15 +482,14 @@ void display_how_to_play() {
 
 void display_setting() {
 	//粘贴返回贴图
-	put_png(40, 40, &back, &back_mask);
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	//持续捕捉鼠标信息
 	while (1) {
+		back.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
-				if ((msg.x > 40 && msg.x < 40 + wback) && (msg.y > 40 && msg.y < 40 + hback)) {
-					display_menu();//点击返回按钮将会返回主菜单
-				}
+				back.act_button(display_menu);
 			}
 		}
 	}
@@ -504,15 +497,14 @@ void display_setting() {
 
 void display_load() {
 	//粘贴返回贴图
-	put_png(40, 40, &back, &back_mask);
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	//持续捕捉鼠标信息
 	while (1) {
+		back.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
-				if ((msg.x > 40 && msg.x < 40 + wback) && (msg.y > 40 && msg.y < 40 + hback)) {
-					display_menu();//点击返回按钮将会返回主菜单
-				}
+				back.act_button(display_menu);
 			}
 		}
 	}
@@ -526,7 +518,7 @@ void display_play() {
 	putimage(0, 0, &play_background);
 
 	//粘贴返回贴图
-	put_png(40, 40, &back, &back_mask);
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
 	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
@@ -557,13 +549,10 @@ void display_play() {
 	//持续捕捉鼠标信息
 	int judge_msg;
 	while (1) {
+		back.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN){
-				if ((msg.x > 40 && msg.x < 40 + wback) && (msg.y > 40 && msg.y < 40 + hback)) {
-					//点击返回按钮将会返回主菜单
-					grids.clear();//析构所有宫格
-					display_menu();
-				}
+				back.act_button(display_menu);
 				for (int i = 0; i <= 60; i++) {
 					if (grids[i].reverse_or_not()) {
 						grids[i].reverse_color();//点击时反转的宫格
@@ -600,16 +589,11 @@ int main() {
 	initgraph(w, h);
 	//加载贴图
 	loadimage(&background, "assets//background.png", w, h);
-	loadimage(&quit, "assets//quit.jpg", wquit, hquit);
-	
-	loadimage(&back, "assets//back.png", wback, hback);//载入返回贴图
-	loadimage(&back_mask, "assets//back_mask.png", wback, hback);
 	loadimage(&pic, "assets//menu_pic.png", 500, 500);
 	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
 	loadimage(&grid0, "assets//grid0.png", 0, 0);
 	loadimage(&grid0_mask, "assets//grid0_mask.png", 0, 0);
 	loadimage(&grid1, "assets//grid1.png", 0, 0);
-	loadimage(&button_mask, "assets//UItemplate_mask.png", wbutton, hbutton);
 
 	//主菜单
 	display_menu();
