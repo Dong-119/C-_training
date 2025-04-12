@@ -171,9 +171,9 @@ public:
 		}
 	}
 
-	void act_button(void save_in(int save_position,/*IMAGE img, */bool* chessboard, int level), int save_position,/* IMAGE img,*/ bool* chessboard, int level) {
+	void act_button(void save_in(int save_position,IMAGE img, bool* chessboard, int level), int save_position, IMAGE img, bool* chessboard, int level) {
 		//按钮跳转功能
-		save_in(save_position, /*img, */ chessboard, level);
+		save_in(save_position, img,  chessboard, level);
 	}
 };
 
@@ -564,10 +564,16 @@ void display_setting() {
 	}
 }
 
-void save_in(int save_position,/*IMAGE img,*/ bool* chessboard, int level) {
+void save_in(int save_position,IMAGE img, bool* chessboard, int level) {
 	std::ostringstream oss;
 	oss << "save\\save" << save_position << "\\chessboard_data"; // 拼接三段字符串
 	std::string chessboard_file = oss.str();
+
+	oss << "save\\save" << save_position << "\\image_data.bmp"; // 拼接三段字符串
+	std::string image_file = oss.str();
+
+	saveimage(_T(/*image_file.c_str() */"C:\\testimage.bmp"), &img);
+
 	ofstream chessboard_save_stream(chessboard_file);
 	//if (!chessboard_save_stream.is_open()) {
 	//	display_checkmsg();
@@ -577,11 +583,11 @@ void save_in(int save_position,/*IMAGE img,*/ bool* chessboard, int level) {
 	}
 }
 
-void display_save(bool *chessboard,int level) {
+void display_save(bool *chessboard,int level,IMAGE img) {
 	grids.clear();//析构所有宫格
 	IMAGE save_background,save_caption;
 	loadimage(&save_background, "assets\\file_save@base%base.png", w, h );
-	int hbar = 80;
+	int hbar = 76;
 	loadimage(&save_caption, "assets\\file_save@caption%layer.png", w, hbar);
 	putimage(0, 0, &save_background);
 	putimage(0, 0, &save_caption);
@@ -604,7 +610,7 @@ void display_save(bool *chessboard,int level) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(retry,chessboard);
 				for (int i = 0; i < 8; i++) {
-					saves[i].act_button(save_in,i,chessboard ,level);
+					saves[i].act_button(save_in, i+1, img, chessboard ,level);
 				}
 			}
 		}
@@ -707,9 +713,10 @@ void display_play() {
 			}
 			else if (msg.message == WM_KEYDOWN) {
 				if (msg.vkcode = 'S') {
-					//grids.clear();//析构所有宫格
-					//delete& back;
-					display_save(chessboard,1);                   //<--待优化
+					IMAGE img;
+					int wimg = 229 * 5, himg = 128 * 5;
+					getimage(&img ,(w- wimg)/2,(h-himg)/2,wimg,himg);
+					display_save(chessboard, level, img);
 				}
 			}
 		}
@@ -800,9 +807,10 @@ void retry(bool* chessboard) {
 			}
 			else if (msg.message == WM_KEYDOWN) {
 				if (msg.vkcode = 'S') {
-					//grids.clear();//析构所有宫格
-					//delete& back;
-					display_save(chessboard, 1);                   //<--待优化
+					IMAGE img;
+					int wimg = 229 * 5, himg = 128 * 5;
+					getimage(&img, (w - wimg) / 2, (h - himg) / 2, wimg, himg);
+					display_save(chessboard, 1, img);                           //<--待优化
 				}
 			}
 		}
