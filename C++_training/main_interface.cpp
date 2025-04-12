@@ -22,6 +22,8 @@
 #include <vector>
 #include <time.h>
 #include <conio.h>
+#include<fstream>
+#include <sstream> 
 using namespace std;
 
 void put_png(int x, int y, IMAGE* img) {
@@ -41,7 +43,6 @@ int w = 1360, h = 765;
 //声明背景图和贴图
 IMAGE title;
 IMAGE background,rule_background,play_background;
-IMAGE back,back_mask;
 IMAGE quit, play, load, how_to_play, setting, pic, pic_mask, grid0,grid0_mask, grid1;
 IMAGE button_mask;
 //IMAGE *back_mask=&back+1;
@@ -52,6 +53,9 @@ ExMessage msg = { 0 };
 
 //定义退出键,返回键和一般键大小
 int wquit = 60, hquit = 60, wbutton = 315, hbutton = 70, wback = 90, hback = 60;
+
+//定义关卡数
+int level = 1;
 
 //定义函数
 void display_menu();
@@ -165,6 +169,11 @@ public:
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
 			f(b);//点击按钮将会跳转至指定函数
 		}
+	}
+
+	void act_button(void save_in(int save_position,/*IMAGE img, */bool* chessboard, int level), int save_position,/* IMAGE img,*/ bool* chessboard, int level) {
+		//按钮跳转功能
+		save_in(save_position, /*img, */ chessboard, level);
 	}
 };
 
@@ -380,6 +389,7 @@ bool complete_or_not() {
 IMAGE pop_up, pop_up_mask;
 void you_win(void next_stage()) {
 	grids.clear();//析构所有宫格
+	level++;
 	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
 	int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
@@ -407,6 +417,7 @@ void you_win(void next_stage()) {
 
 void you_lose(bool *chessboard) {
 	grids.clear();//析构所有宫格
+	level = 1;
 	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
 	int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
@@ -432,98 +443,14 @@ void you_lose(bool *chessboard) {
 	}
 }
 
-void retry(bool *chessboard) {
-	//换背景
-	cleardevice();
-	loadimage(&play_background, "assets//play_background.png", w, h);
-	putimage(0, 0, &play_background);
-
-	//粘贴返回贴图
-	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
-
-	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
-	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
-
-	//开始双缓冲绘图
-	BeginBatchDraw();
-	//生成盘面贴图
-	int xgrid, ygrid;
-	grids.emplace_back(x0, y0, 0, 0);
-	for (int i = 0; i < 5; i++) {
-		ygrid = y0 - i * 2 * deltay;
-		xgrid = x0;
-		for (int j = 0; j < 6 * i; j++) {
-			grids.emplace_back(xgrid, ygrid, i, j);
-			if (j / i == 0) { xgrid += deltax; ygrid += deltay; }
-			else if (j / i == 1) { ygrid += 2 * deltay; }
-			else if (j / i == 2) { xgrid -= deltax; ygrid += deltay; }
-			else if (j / i == 3) { xgrid -= deltax; ygrid -= deltay; }
-			else if (j / i == 4) { ygrid -= 2 * deltay; }
-			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
-		}
-	}
-	//缓冲完毕开始绘图
-	EndBatchDraw();
-
-	for (int i = 0; i < 61; i++) {
-		if (chessboard[i]) {
-			grids[i].reverse_set_question();
-		}
-	}
-
-	//记录本关盘面，供重试功能使用
-	for (int i = 0; i <= 60; i++) {
-		chessboard[i] = grids[i].get_color();
-	}
-
-	//持续捕捉鼠标信息
-	int judge_msg;
-	while (1) {
-		back.act_over_mask();
-		if (peekmessage(&msg, EX_MOUSE)) {
-			if (msg.message == WM_LBUTTONDOWN) {
-				back.act_button(display_menu);
-				for (int i = 0; i <= 60; i++) {
-					if (grids[i].reverse_or_not()) {
-						if (!grids[i].reverse_color()) {
-							grids.clear();//析构所有宫格
-							you_lose(chessboard);
-						};//点击时反转的宫格
-						judge_msg = i;
-						while (1) {
-							if (peekmessage(&msg, EX_MOUSE)) {
-								if (msg.message == WM_LBUTTONUP) {
-									if (complete_or_not()) {
-										you_win(display_play);
-									}
-									i = 61;//使for函数停止遍历
-									break;
-								}
-								else {
-									for (int j = 0; j <= 60; j++) {
-										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
-											if (!grids[j].reverse_color()) {
-												you_lose(chessboard);
-											};
-											judge_msg = j;
-											break;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 void exit() {
 	exit(0);
 }
 
 void display_menu(){
+	loadimage(&pic, "assets//menu_pic.png", 500, 500);
+	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
+	loadimage(&background, "assets//background.png", w, h);
 	//主菜单背景图
 	putimage(0, 0, &background);
 
@@ -606,7 +533,6 @@ void display_how_to_play() {
 	color = RGB(200, 0, 0);
 	settextcolor(color);
 	settextstyle(50, 0, "华文行楷", 0, 0, 100, false, false, false);
-	//int wplay_from_rule = textwidth("我已了解 开始游戏"), hplay_from_rule = textheight("我已了解 开始游戏");
 	center_text(w - 100, h / 4, 100, 3 * h / 4, "开始游戏");
 
 	//持续捕捉鼠标信息
@@ -638,6 +564,53 @@ void display_setting() {
 	}
 }
 
+void save_in(int save_position,/*IMAGE img,*/ bool* chessboard, int level) {
+	std::ostringstream oss;
+	oss << "save\\save" << save_position << "\\chessboard_data"; // 拼接三段字符串
+	std::string chessboard_file = oss.str();
+	ofstream chessboard_save_stream(chessboard_file);
+	//if (!chessboard_save_stream.is_open()) {
+	//	display_checkmsg();
+	//}
+	for (int i = 0; i < 61; i++) {
+		chessboard_save_stream << chessboard[i];
+	}
+}
+
+void display_save(bool *chessboard,int level) {
+	grids.clear();//析构所有宫格
+	IMAGE save_background,save_caption;
+	loadimage(&save_background, "assets\\file_save@base%base.png", w, h );
+	int hbar = 80;
+	loadimage(&save_caption, "assets\\file_save@caption%layer.png", w, hbar);
+	putimage(0, 0, &save_background);
+	putimage(0, 0, &save_caption);
+
+	//粘贴返回贴图
+	button back(0, h-hback, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	vector<button> saves;
+	int wsave_img = 412, hsave_img = 132;
+	for (int i = 0; i < 8; i++) {
+		saves.emplace_back((w / 2 - wsave_img)/2 + (w / 2) * (i / 4), hbar + (h / 4 - hsave_img) / 2 + (h - hbar) / 4 * (i % 4), wsave_img, hsave_img, "assets\\file_save@item%button;normal.png", "assets\\file_save@item%button;over.png", "assets\\file@item%button;mask.png");
+	}
+
+	while (1) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			back.act_over_mask();
+			for (int i = 0; i < 8; i++) {
+				saves[i].act_over_mask();
+			}
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(retry,chessboard);
+				for (int i = 0; i < 8; i++) {
+					saves[i].act_button(save_in,i,chessboard ,level);
+				}
+			}
+		}
+	}
+}
+
 void display_load() {
 	//粘贴返回贴图
 	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
@@ -652,7 +625,6 @@ void display_load() {
 		}
 	}
 }
-
 
 void display_play() {
 	//换背景
@@ -699,7 +671,7 @@ void display_play() {
 	int judge_msg;
 	while (1) {
 		back.act_over_mask();
-		if (peekmessage(&msg, EX_MOUSE)) {
+		if (peekmessage(&msg, EX_MOUSE| EX_KEY)) {
 			if (msg.message == WM_LBUTTONDOWN){
 				back.act_button(display_menu);
 				for (int i = 0; i <= 60; i++) {
@@ -733,6 +705,106 @@ void display_play() {
 					}
 				}
 			}
+			else if (msg.message == WM_KEYDOWN) {
+				if (msg.vkcode = 'S') {
+					//grids.clear();//析构所有宫格
+					//delete& back;
+					display_save(chessboard,1);                   //<--待优化
+				}
+			}
+		}
+	}
+}
+
+void retry(bool* chessboard) {
+	//换背景
+	cleardevice();
+	loadimage(&play_background, "assets//play_background.png", w, h);
+	putimage(0, 0, &play_background);
+
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
+	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
+
+	//开始双缓冲绘图
+	BeginBatchDraw();
+	//生成盘面贴图
+	int xgrid, ygrid;
+	grids.emplace_back(x0, y0, 0, 0);
+	for (int i = 0; i < 5; i++) {
+		ygrid = y0 - i * 2 * deltay;
+		xgrid = x0;
+		for (int j = 0; j < 6 * i; j++) {
+			grids.emplace_back(xgrid, ygrid, i, j);
+			if (j / i == 0) { xgrid += deltax; ygrid += deltay; }
+			else if (j / i == 1) { ygrid += 2 * deltay; }
+			else if (j / i == 2) { xgrid -= deltax; ygrid += deltay; }
+			else if (j / i == 3) { xgrid -= deltax; ygrid -= deltay; }
+			else if (j / i == 4) { ygrid -= 2 * deltay; }
+			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
+		}
+	}
+	//缓冲完毕开始绘图
+	EndBatchDraw();
+
+	for (int i = 0; i < 61; i++) {
+		if (chessboard[i]) {
+			grids[i].reverse_set_question();
+		}
+	}
+
+	//记录本关盘面，供重试功能使用
+	for (int i = 0; i <= 60; i++) {
+		chessboard[i] = grids[i].get_color();
+	}
+
+	//持续捕捉鼠标信息
+	int judge_msg;
+	while (1) {
+		back.act_over_mask();
+		if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				for (int i = 0; i <= 60; i++) {
+					if (grids[i].reverse_or_not()) {
+						if (!grids[i].reverse_color()) {
+							you_lose(chessboard);
+						};//点击时反转的宫格
+						judge_msg = i;
+						while (1) {
+							if (peekmessage(&msg, EX_MOUSE)) {
+								if (msg.message == WM_LBUTTONUP) {
+									if (complete_or_not()) {
+										you_win(display_play);
+									}
+									i = 61;//使for函数停止遍历
+									break;
+								}
+								else {
+									for (int j = 0; j <= 60; j++) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
+											if (!grids[j].reverse_color()) {
+												you_lose(chessboard);
+											};
+											judge_msg = j;
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			else if (msg.message == WM_KEYDOWN) {
+				if (msg.vkcode = 'S') {
+					//grids.clear();//析构所有宫格
+					//delete& back;
+					display_save(chessboard, 1);                   //<--待优化
+				}
+			}
 		}
 	}
 }
@@ -741,9 +813,6 @@ int main() {
 	srand(time(NULL));
 	initgraph(w, h);
 	//加载贴图
-	loadimage(&background, "assets//background.png", w, h);
-	loadimage(&pic, "assets//menu_pic.png", 500, 500);
-	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
 	loadimage(&grid0, "assets//grid0.png", 0, 0);
 	loadimage(&grid0_mask, "assets//grid0_mask.png", 0, 0);
 	loadimage(&grid1, "assets//grid1.png", 0, 0);
