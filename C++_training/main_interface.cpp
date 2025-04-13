@@ -664,19 +664,53 @@ void display_save(bool *chessboard,int level,IMAGE img) {
 	}
 }
 
-void display_load() {
-	//粘贴返回贴图
-	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+void load_to (const char* chessboard_file_name) {
+	vector<int> numbers; // 使用动态数组存储数字
 
-	//持续捕捉鼠标信息
-	while (1) {
-		back.act_over_mask();
-		if (peekmessage(&msg, EX_MOUSE)) {
-			if (msg.message == WM_LBUTTONDOWN) {
-				back.act_button(display_menu);
-			}
+	// 打开文件
+	ifstream inputFile(chessboard_file_name);
+	if (!inputFile.is_open()) {
+		cerr << "无法打开文件！" << endl;
+		exit();
+	}
+
+	char ch;
+	// 逐字符读取文件内容
+	while (inputFile.get(ch)) {
+		if (isdigit(ch)) { // 检查是否为数字字符
+			numbers.push_back(ch - '0'); // 将字符转换为数字并存储
 		}
 	}
+
+	bool chessboard[61];
+	for (int i = 0; i < 61; i++) {
+		chessboard[i] = numbers[i];
+	}
+
+	// 关闭文件
+	inputFile.close();
+
+	retry(chessboard);
+}
+
+void display_load() {
+	grids.clear();//析构所有宫格
+	IMAGE save_background, save_caption;
+	loadimage(&save_background, "assets\\file_save@base%base.png", w, h);
+	int hbar = 76;
+	loadimage(&save_caption, "assets\\file_save@caption%layer.png", w, hbar);
+	putimage(0, 0, &save_background);
+	putimage(0, 0, &save_caption);
+
+	//粘贴返回贴图
+	button back(0, h - hback, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	char str[100];
+	InputBox( str, 100 , "请输入地址"); // 弹出对话框让用户输入字符串
+
+	outtextxy(100, 100, str); // 在窗口中显示用户输入的字符串
+
+	load_to(str);
 }
 
 void display_play() {
