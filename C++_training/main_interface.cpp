@@ -95,6 +95,14 @@ private:
 		}
 	}
 public:
+	const int get_x() {
+		return x;
+	}
+
+	const int get_y() {
+		return y;
+	}
+
 	button(int x, int y, int w, int h, LPCTSTR img, LPCTSTR img_over) {
 		this->x = x;
 		this->y = y;
@@ -127,6 +135,11 @@ public:
 		this->w = w;
 		this->h = h;
 		put_png(x, y, &button_nor, &button_mask);
+	}
+
+	bool state_change () {
+		if (over_or_not() == !state)return true;
+		else return false;
 	}
 
 	void act_over_mask() {
@@ -173,7 +186,9 @@ public:
 
 	void act_button(void save_in(int save_position,IMAGE img, bool* chessboard, int level), int save_position, IMAGE img, bool* chessboard, int level) {
 		//°´Å¥Ìø×ª¹¦ÄÜ
-		save_in(save_position, img,  chessboard, level);
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			save_in(save_position, img, chessboard, level);
+		}
 	}
 };
 
@@ -569,19 +584,25 @@ void save_in(int save_position,IMAGE img, bool* chessboard, int level) {
 	oss << "save\\save" << save_position << "\\chessboard_data"; // Æ´½ÓÈı¶Î×Ö·û´®
 	std::string chessboard_file = oss.str();
 
-	oss << "save\\save" << save_position << "\\image_data.bmp"; // Æ´½ÓÈı¶Î×Ö·û´®
-	std::string image_file = oss.str();
+	std::ostringstream ossimg;
+	ossimg << "save\\save" << save_position << "\\image_data.png"; // Æ´½ÓÈı¶Î×Ö·û´®
+	std::string image_file = ossimg.str();
 
-	saveimage(_T(/*image_file.c_str() */"C:\\testimage.bmp"), &img);
+	saveimage(_T(image_file.c_str()), &img);
 
 	ofstream chessboard_save_stream(chessboard_file);
+	 
 	//if (!chessboard_save_stream.is_open()) {
 	//	display_checkmsg();
 	//}
+
 	for (int i = 0; i < 61; i++) {
 		chessboard_save_stream << chessboard[i];
 	}
 }
+
+//¶¨Òåsaveload½çÃæËõÂÔÍ¼³¤¿í
+int wimg = 229*2/3, himg = 128*2/3;
 
 void display_save(bool *chessboard,int level,IMAGE img) {
 	grids.clear();//Îö¹¹ËùÓĞ¹¬¸ñ
@@ -596,21 +617,47 @@ void display_save(bool *chessboard,int level,IMAGE img) {
 	button back(0, h-hback, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	vector<button> saves;
+
 	int wsave_img = 412, hsave_img = 132;
+	IMAGE save_img;
 	for (int i = 0; i < 8; i++) {
 		saves.emplace_back((w / 2 - wsave_img)/2 + (w / 2) * (i / 4), hbar + (h / 4 - hsave_img) / 2 + (h - hbar) / 4 * (i % 4), wsave_img, hsave_img, "assets\\file_save@item%button;normal.png", "assets\\file_save@item%button;over.png", "assets\\file@item%button;mask.png");
+		std::ostringstream oss;
+		oss << "save\\save" << i+1 << "\\image_data.png"; // Æ´½ÓÈı¶Î×Ö·û´®
+		std::string image_file = oss.str();
+		loadimage(&save_img, image_file.c_str(), wimg, himg,0);
+		putimage(saves[i].get_x() + 12, saves[i].get_y() + 12, &save_img);
 	}
 
 	while (1) {
 		if (peekmessage(&msg, EX_MOUSE)) {
 			back.act_over_mask();
 			for (int i = 0; i < 8; i++) {
-				saves[i].act_over_mask();
+				if (saves[i].state_change()) {
+
+					//¿ªÊ¼Ë«»º³å»æÍ¼
+					BeginBatchDraw();
+
+					saves[i].act_over_mask();
+					std::ostringstream oss;
+					oss << "save\\save" << i + 1 << "\\image_data.png"; // Æ´½ÓÈı¶Î×Ö·û´®
+					std::string image_file = oss.str();
+					loadimage(&save_img, image_file.c_str(), wimg, himg);
+					putimage(saves[i].get_x() + 12, saves[i].get_y() + 12, &save_img);
+
+					//»º³åÍê±Ï¿ªÊ¼»æÍ¼
+					EndBatchDraw();
+				}
 			}
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(retry,chessboard);
 				for (int i = 0; i < 8; i++) {
 					saves[i].act_button(save_in, i+1, img, chessboard ,level);
+					std::ostringstream oss;
+					oss << "save\\save" << i + 1 << "\\image_data.png"; // Æ´½ÓÈı¶Î×Ö·û´®
+					std::string image_file = oss.str();
+					loadimage(&save_img, image_file.c_str(), wimg, himg);
+					putimage(saves[i].get_x() + 12, saves[i].get_y() + 12, &save_img);
 				}
 			}
 		}
@@ -662,6 +709,7 @@ void display_play() {
 			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
 		}
 	}
+
 	//»º³åÍê±Ï¿ªÊ¼»æÍ¼
 	EndBatchDraw();
 	
@@ -677,8 +725,8 @@ void display_play() {
 	int judge_msg;
 	while (1) {
 		back.act_over_mask();
-		if (peekmessage(&msg, EX_MOUSE| EX_KEY)) {
-			if (msg.message == WM_LBUTTONDOWN){
+		if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
 				for (int i = 0; i <= 60; i++) {
 					if (grids[i].reverse_or_not()) {
@@ -695,9 +743,9 @@ void display_play() {
 									i = 61;//Ê¹forº¯ÊıÍ£Ö¹±éÀú
 									break;
 								}
-								else { 
+								else {
 									for (int j = 0; j <= 60; j++) {
-										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg,j)) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
 											if (!grids[j].reverse_color()) {
 												you_lose(chessboard);
 											};
@@ -714,8 +762,8 @@ void display_play() {
 			else if (msg.message == WM_KEYDOWN) {
 				if (msg.vkcode = 'S') {
 					IMAGE img;
-					int wimg = 229 * 5, himg = 128 * 5;
-					getimage(&img ,(w- wimg)/2,(h-himg)/2,wimg,himg);
+					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 					display_save(chessboard, level, img);
 				}
 			}
@@ -737,6 +785,7 @@ void retry(bool* chessboard) {
 
 	//¿ªÊ¼Ë«»º³å»æÍ¼
 	BeginBatchDraw();
+
 	//Éú³ÉÅÌÃæÌùÍ¼
 	int xgrid, ygrid;
 	grids.emplace_back(x0, y0, 0, 0);
@@ -808,9 +857,9 @@ void retry(bool* chessboard) {
 			else if (msg.message == WM_KEYDOWN) {
 				if (msg.vkcode = 'S') {
 					IMAGE img;
-					int wimg = 229 * 5, himg = 128 * 5;
-					getimage(&img, (w - wimg) / 2, (h - himg) / 2, wimg, himg);
-					display_save(chessboard, 1, img);                           //<--´ıÓÅ»¯
+					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
+					display_save(chessboard, level, img);
 				}
 			}
 		}
