@@ -66,6 +66,7 @@ void display_play();
 void you_win(void next_stage());
 void you_lose(bool *chessboard);
 void retry(bool *chessboard);
+void display_chooce_mode();
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -510,7 +511,7 @@ void display_menu(){
 
 			quit.act_over();
 			if (msg.message == WM_LBUTTONDOWN) {
-				play.act_button(display_play);
+				play.act_button(display_chooce_mode);
 				load.act_button(display_load);
 				how_to_play.act_button(display_how_to_play);
 				setting.act_button(display_setting);
@@ -670,8 +671,27 @@ void load_to (const char* chessboard_file_name) {
 	// 打开文件
 	ifstream inputFile(chessboard_file_name);
 	if (!inputFile.is_open()) {
-		cerr << "无法打开文件！" << endl;
-		exit();
+
+		//cerr << "无法打开文件！" << endl;
+		loadimage(&pop_up, "assets//pop_up.png", 0, 0);
+		loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
+		int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
+		put_png(ximg, yimg, &pop_up, &pop_up_mask);
+		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextcolor(BLACK);
+		setbkmode(TRANSPARENT);
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "无法打开文件");
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3, "请重新输入文件地址\n文件地址不要加引号，并确认是否用\\\\作地址分隔符");
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+2* pop_up.getheight() / 3, "按任意键返回");
+
+		//持续捕捉鼠标信息
+		while (1) {
+			if (peekmessage(&msg, EX_KEY)) {
+				if (msg.message == WM_KEYDOWN) {
+					display_menu();
+				}
+			}
+		}
 	}
 
 	char ch;
@@ -706,11 +726,45 @@ void display_load() {
 	button back(0, h - hback, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
 	char str[100];
-	InputBox( str, 100 , "请输入地址"); // 弹出对话框让用户输入字符串
+	InputBox( str, 100 , "请输入盘面文件地址"); // 弹出对话框让用户输入字符串
 
 	outtextxy(100, 100, str); // 在窗口中显示用户输入的字符串
 
 	load_to(str);
+}
+
+void display_chooce_stage() {
+
+}
+
+void display_chooce_mode() {
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	IMAGE chooce_UI,chooce_UI_mask;
+	loadimage(&chooce_UI, "assets//chooce_mode.png", 0, h);
+	loadimage(&chooce_UI_mask, "assets//chooce_mode_mask.png", 0, h);
+	put_png(w - chooce_UI.getwidth(), 0, &chooce_UI, &chooce_UI_mask);
+
+	int wbt = 200, hbt = 50;
+	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	int deltax = (chooce_UI.getwidth() - wbt) / 2, deltay = (h / 2 - chooce_UI.getheight()) / 2;
+	button stage(w - chooce_UI.getwidth() + deltax, h / 2 + deltay, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "闯关模式");
+	button endless(w - chooce_UI.getwidth() + deltax, h + deltay, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "无尽模式");
+
+	while (1) {
+		back.act_over_mask();
+		stage.act_over_mask();
+		endless.act_over_mask();
+		if (peekmessage(&msg, EX_MOUSE)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				stage.act_button(display_chooce_stage);
+				endless.act_button(display_play);
+			}
+		}
+	}
 }
 
 void display_play() {
