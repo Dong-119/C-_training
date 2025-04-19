@@ -191,6 +191,12 @@ public:
 			save_in(save_position, img, chessboard, level);
 		}
 	}
+
+	void act_button(void load_to(const char* chessboard_file_name), const char* chessboard_file_name) {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			load_to(chessboard_file_name);
+		}
+	}
 };
 
 class Grid {
@@ -677,11 +683,13 @@ void load_to (const char* chessboard_file_name) {
 		loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
 		int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
 		put_png(ximg, yimg, &pop_up, &pop_up_mask);
-		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
 		settextcolor(BLACK);
 		setbkmode(TRANSPARENT);
 		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "无法打开文件");
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3, "请重新输入文件地址\n文件地址不要加引号，并确认是否用\\\\作地址分隔符");
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3-40, "请重新输入文件地址");
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3, "文件地址不要加引号");
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3+40, "并确认是否用\\\\作地址分隔符");
 		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+2* pop_up.getheight() / 3, "按任意键返回");
 
 		//持续捕捉鼠标信息
@@ -713,24 +721,78 @@ void load_to (const char* chessboard_file_name) {
 	retry(chessboard);
 }
 
+void load_to_input() {
+	char str[100];
+	InputBox(str, 100, "请输入盘面文件地址"); // 弹出对话框让用户输入字符串
+
+	outtextxy(100, 100, str); // 在窗口中显示用户输入的字符串
+
+	load_to(str);
+}
+
 void display_load() {
 	grids.clear();//析构所有宫格
 	IMAGE save_background, save_caption;
-	loadimage(&save_background, "assets\\file_save@base%base.png", w, h);
+	loadimage(&save_background, "assets\\file_load@base%base.png", w, h);
 	int hbar = 76;
-	loadimage(&save_caption, "assets\\file_save@caption%layer.png", w, hbar);
+	loadimage(&save_caption, "assets\\file_load@caption%layer.png", w, hbar);
 	putimage(0, 0, &save_background);
 	putimage(0, 0, &save_caption);
 
 	//粘贴返回贴图
 	button back(0, h - hback, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
-	char str[100];
-	InputBox( str, 100 , "请输入盘面文件地址"); // 弹出对话框让用户输入字符串
+	vector<button> loads;
 
-	outtextxy(100, 100, str); // 在窗口中显示用户输入的字符串
+	int wsave_img = 412, hsave_img = 132;
+	IMAGE save_img;
+	for (int i = 0; i < 8; i++) {
+		loads.emplace_back((w / 2 - wsave_img) / 2 + (w / 2) * (i / 4), hbar + (h / 4 - hsave_img) / 2 + (h - hbar) / 4 * (i % 4), wsave_img, hsave_img, "assets\\file_save@item%button;normal.png", "assets\\file_save@item%button;over.png", "assets\\file@item%button;mask.png");
+		std::ostringstream oss;
+		oss << "save\\save" << i + 1 << "\\image_data.png"; // 拼接三段字符串
+		std::string image_file = oss.str();
+		loadimage(&save_img, image_file.c_str(), wimg, himg, 0);
+		putimage(loads[i].get_x() + 12, loads[i].get_y() + 12, &save_img);
+	}
 
-	load_to(str);
+	int wbt = 200, hbt = 50;
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	button user_input(w - wbt - 40, (hbar - hbt) / 2 , wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "载入自定义关卡");
+    
+	//持续捕捉鼠标信息
+	while (1) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			back.act_over_mask();
+			user_input.act_over_mask();
+			for (int i = 0; i < 8; i++) {
+				if (loads[i].state_change()) {
+
+					//开始双缓冲绘图
+					BeginBatchDraw();
+
+					loads[i].act_over_mask();
+					std::ostringstream oss;
+					oss << "save\\save" << i + 1 << "\\image_data.png"; // 拼接三段字符串
+					std::string image_file = oss.str();
+					loadimage(&save_img, image_file.c_str(), wimg, himg);
+					putimage(loads[i].get_x() + 12, loads[i].get_y() + 12, &save_img);
+
+					//缓冲完毕开始绘图
+					EndBatchDraw();
+				}
+			}
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				user_input.act_button(load_to_input);
+				for (int i = 0; i < 8; i++) {
+					std::ostringstream oss;
+					oss << "save\\save" << i + 1 << "\\chessboard_data"; // 拼接三段字符串
+					loads[i].act_button(load_to, oss.str().c_str());
+				}
+			}
+		}
+	}
 }
 
 void display_chooce_stage() {
@@ -847,8 +909,10 @@ void display_play() {
 					}
 				}
 			}
-			else if (msg.message == WM_KEYDOWN) {
-				if (msg.vkcode = 'S') {
+            else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			{
+				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+				{
 					IMAGE img;
 					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
@@ -858,6 +922,7 @@ void display_play() {
 		}
 	}
 }
+
 
 void retry(bool* chessboard) {
 	//换背景
@@ -893,6 +958,7 @@ void retry(bool* chessboard) {
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 
+	//加载盘面
 	for (int i = 0; i < 61; i++) {
 		if (chessboard[i]) {
 			grids[i].reverse_set_question();
@@ -942,8 +1008,10 @@ void retry(bool* chessboard) {
 					}
 				}
 			}
-			else if (msg.message == WM_KEYDOWN) {
-				if (msg.vkcode = 'S') {
+            else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			{
+				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+				{
 					IMAGE img;
 					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
