@@ -484,9 +484,9 @@ void display_menu(){
 	int xsetting = xplay, ysetting = yplay + 3 * (h - yplay) / 4;
 
 	//根据第一个按键位置放置标题
-	settextstyle(200, 0, "华文行楷", 0, 0, 200, false, false, false);
-	loadimage(&title, "assets//title.png", textwidth("提笔乾坤"), textheight("提笔乾坤"));
-	putimage((w - textwidth("提笔乾坤")) / 2, (yplay - textheight("提笔乾坤")) / 2, &title, SRCAND);
+	int wtitle = 800, htitle = 360;
+	loadimage(&title, "assets//title.png", wtitle, htitle);
+	putimage((w - wtitle) / 2, (yplay - htitle) / 2, &title, SRCAND);
 	put_png(xplay + wbutton + 200, yplay - 80, &pic, &pic_mask);
 
 	//放置按键贴图
@@ -796,7 +796,42 @@ void display_load() {
 }
 
 void display_chooce_stage() {
+	//设置背景
+	IMAGE chooce_stage_background;
+	loadimage(&chooce_stage_background, "assets\\extra@base%base.png", w, h);
+	putimage(0, 0, &chooce_stage_background);
 
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	//设置选关按键
+	vector<button> chooce_stage;
+
+	//设置按键大小
+	int wbt = 80, hbt = 80;
+
+	for (int j = 1; j < 6; j++) {
+		settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextcolor(WHITE);
+		chooce_stage.emplace_back((j - 1) * (w / 5) + (w / 5 - wbt) / 2, (h - hbt) / 2, wbt, hbt, "assets//stage.png", "assets//stage_over.png", "assets//stage_mask.png",to_string(j));
+	}
+
+	while (1) {
+		back.act_over_mask();
+		for (int i = 0; i < 5; i++) {
+			chooce_stage[i].act_over_mask();
+		}
+		if (peekmessage(&msg, EX_MOUSE)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				for (int i = 0; i < 5; i++) {
+					std::ostringstream oss;
+					oss << "level " << i + 1; // 拼接三段字符串
+					chooce_stage[i].act_button(load_to,oss.str().c_str());
+				}
+			}
+		}
+	}
 }
 
 void display_chooce_mode() {
@@ -860,6 +895,18 @@ void display_play() {
 		}
 	}
 
+	IMAGE save_image, save_image_mask;
+	int length = 30;
+	int text_length = 100;
+	int y_to_btm = 20;
+	loadimage(&save_image, "assets\\stage.png", length, length);
+	loadimage(&save_image_mask, "assets\\stage_mask.png", length, length);
+	put_png(w - text_length - length, h - y_to_btm - length, &save_image, &save_image_mask);
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	center_text(length, length, w - text_length - length, h - y_to_btm - length, "S");
+	center_text(text_length, length, w - text_length, h - y_to_btm - length , "存档");
+
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 	
@@ -885,7 +932,7 @@ void display_play() {
 						};//点击时反转的宫格
 						judge_msg = i;
 						while (1) {
-							if (peekmessage(&msg, EX_MOUSE)) {
+							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
 								if (msg.message == WM_LBUTTONUP) {
 									if (complete_or_not()) {
 										you_win(display_play);
@@ -905,11 +952,21 @@ void display_play() {
 									}
 								}
 							}
+							else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+							{
+								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+								{
+									IMAGE img;
+									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
+									display_save(chessboard, level, img);
+								}
+							}
 						}
 					}
 				}
 			}
-            else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
 			{
 				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
 				{
@@ -922,7 +979,6 @@ void display_play() {
 		}
 	}
 }
-
 
 void retry(bool* chessboard) {
 	//换背景
@@ -955,6 +1011,19 @@ void retry(bool* chessboard) {
 			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
 		}
 	}
+
+	IMAGE save_image, save_image_mask;
+	int length = 30;
+	int text_length = 100;
+	int y_to_btm = 20;
+	loadimage(&save_image, "assets\\stage.png", length, length);
+	loadimage(&save_image_mask, "assets\\stage_mask.png", length, length);
+	put_png(w - text_length - length, h - y_to_btm - length, &save_image, &save_image_mask);
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	center_text(length, length, w - text_length - length, h - y_to_btm - length, "S");
+	center_text(text_length, length, w - text_length, h - y_to_btm - length, "存档");
+
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 
@@ -984,7 +1053,7 @@ void retry(bool* chessboard) {
 						};//点击时反转的宫格
 						judge_msg = i;
 						while (1) {
-							if (peekmessage(&msg, EX_MOUSE)) {
+							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
 								if (msg.message == WM_LBUTTONUP) {
 									if (complete_or_not()) {
 										you_win(display_play);
@@ -1002,6 +1071,16 @@ void retry(bool* chessboard) {
 											break;
 										}
 									}
+								}
+							}
+							else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+							{
+								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+								{
+									IMAGE img;
+									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
+									display_save(chessboard, level, img);
 								}
 							}
 						}
