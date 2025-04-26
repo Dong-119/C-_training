@@ -56,6 +56,7 @@ int wquit = 60, hquit = 60, wbutton = 315, hbutton = 70, wback = 90, hback = 60;
 
 //定义关卡数
 int level = 1;
+int mode = 1;
 
 //定义函数
 void display_menu();
@@ -197,6 +198,27 @@ public:
 			load_to(chessboard_file_name);
 		}
 	}
+
+	bool act_button(int chooce_mode) {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			mode = chooce_mode;
+			loadimage(&button_nor, "assets//sys_page1@use__speech%button;normal;on.png", w, h);
+			loadimage(&button_over, "assets//sys_page1@use__speech%button;over;on.png", w, h);
+			loadimage(&button_mask, "assets//sys_page1@use__speech%button;normal;off_mask.png", w, h);
+			put_png(x, y, &button_nor, &button_mask);
+			set_str(word.c_str());
+			return true;
+		}
+		return false;
+	}
+
+	void change_image(LPCTSTR img, LPCTSTR img_over, LPCTSTR img_mask) {
+		loadimage(&button_nor, img, w, h);
+		loadimage(&button_mask, img_mask, w, h);
+		loadimage(&button_over, img_over, w, h);
+		put_png(x, y, &button_nor, &button_mask);
+		set_str(word.c_str());
+	}
 };
 
 class Grid {
@@ -220,19 +242,51 @@ public:
 		reversed_time = n;
 	}
 
-	bool reverse_color() {
-		if (reversed_time == 0) {
-			grid_color = !grid_color; 
-			if (grid_color == false) {
-				putimage(x, y, &grid0_mask, NOTSRCERASE);
-				putimage(x, y, &grid0, SRCINVERT);
+	bool reverse_color(int mode) {
+		if (mode == 0) {
+			IMAGE grid_cover, grid_cover_mask;
+			loadimage(&grid_cover, "assets//grid_cover.png", wgrid, hgrid);
+			loadimage(&grid_cover_mask, "assets//grid_cover_mask.png", wgrid, hgrid);
+			if (reversed_time == 0) {
+				grid_color = !grid_color;
+				if (grid_color == false) {
+					put_png(x, y, &grid0, &grid0_mask);
+					put_png(x, y, &grid_cover, &grid_cover_mask);
+				}
+				else {
+					put_png(x, y, &grid1);
+					put_png(x, y, &grid_cover, &grid_cover_mask);
+				}
+				reversed_time++;
+				return true;
 			}
-			else { putimage(x, y, &grid1, SRCAND); }
-			reversed_time++;
-			return true;
+			else {
+				return false;
+			}
 		}
-		else {
-			return false;
+		else if (mode == 1) {
+			if (reversed_time == 0) {
+				grid_color = !grid_color;
+				if (grid_color == false) {
+					put_png(x, y, &grid0, &grid0_mask);
+				}
+				else {put_png(x, y, &grid1); }
+				reversed_time++;
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		else if (mode == 2) {
+			if (reversed_time == 0) {
+				grid_color = !grid_color;
+				reversed_time++;
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
 	}
 
@@ -470,6 +524,7 @@ void exit() {
 }
 
 void display_menu(){
+	grids.clear();//析构所有宫格
 	loadimage(&pic, "assets//menu_pic.png", 500, 500);
 	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
 	loadimage(&background, "assets//background.png", w, h);
@@ -528,6 +583,7 @@ void display_menu(){
 }
 
 void display_how_to_play() {
+	grids.clear();//析构所有宫格
 	//换背景
 	cleardevice();
 	loadimage(&rule_background, "assets//rule_background.png", w, h);
@@ -572,15 +628,57 @@ void display_how_to_play() {
 }
 
 void display_setting() {
+	grids.clear();//析构所有宫格
+	IMAGE setting_background;
+	loadimage(&setting_background, "assets//sys_base@base%base.png", w, h);
+
+	IMAGE backgroundpopup, backgroundpopup_mask;
+	int wbackgroundpopup = w - 10, hbackgroundpopup = h - 10;
+	loadimage(&backgroundpopup, "assets//sys_base@framebase%layer.png", wbackgroundpopup, hbackgroundpopup);
+	loadimage(&backgroundpopup_mask, "assets//sys_base@framebase%layer_mask.png", wbackgroundpopup, hbackgroundpopup);
+	putimage(0, 0, &setting_background);
+	int xbackgroundpopup = (w - backgroundpopup.getwidth()) / 2, ybackgroundpopup = (h - backgroundpopup.getheight()) / 2;
+	put_png(xbackgroundpopup, ybackgroundpopup, &backgroundpopup, &backgroundpopup_mask);
+
 	//粘贴返回贴图
 	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+
+	settextstyle(40, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	setbkmode(TRANSPARENT);
+	int xmode = xbackgroundpopup + 40, ymode = hback + 40 + 20 , wmode = 200, hmode = 360, htext = 40;
+	center_text(wmode, htext, xmode, ymode, "难度选择");
+
+	int wbox = 20, hbox = 20;
+	vector<button> mode_chooce;
+	mode_chooce.emplace_back(xmode + wmode - wbox, ymode + htext + ((hmode - htext) / 3 - hbox) / 2 , wbox, hbox, "assets//sys_page1@use__speech%button;normal;off.png", "assets//sys_page1@use__speech%button;over;off.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
+	mode_chooce.emplace_back(xmode + wmode - wbox, ymode + htext + ((hmode - htext) / 3 - hbox) / 2 + (hmode - htext) / 3, wbox, hbox, "assets//sys_page1@use__speech%button;normal;off.png", "assets//sys_page1@use__speech%button;over;off.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
+	mode_chooce.emplace_back(xmode + wmode - wbox, ymode + htext + ((hmode - htext) / 3 - hbox) / 2 + 2*(hmode - htext) / 3, wbox, hbox, "assets//sys_page1@use__speech%button;normal;off.png", "assets//sys_page1@use__speech%button;over;off.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
+	mode_chooce[mode].change_image("assets//sys_page1@use__speech%button;normal;on.png", "assets//sys_page1@use__speech%button;over;on.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
+	
+	settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext, "简单模式");
+	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext+ (hmode - htext) / 3, "普通模式");
+	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext+ 2 * (hmode - htext) / 3, "困难模式");
 
 	//持续捕捉鼠标信息
 	while (1) {
 		back.act_over_mask();
+		for (int i = 0; i < 3; i++) {
+			mode_chooce[i].act_over_mask();
+		}
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
+				for (int i = 0; i < 3; i++) {
+					if (mode_chooce[i].act_button(i)) {
+						for (int j = 0; j < 3; j++) {
+							if (j != i) {
+								mode_chooce[j].change_image("assets//sys_page1@use__speech%button;normal;off.png", "assets//sys_page1@use__speech%button;over;off.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -796,6 +894,7 @@ void display_load() {
 }
 
 void display_chooce_stage() {
+	grids.clear();//析构所有宫格
 	//设置背景
 	IMAGE chooce_stage_background;
 	loadimage(&chooce_stage_background, "assets\\extra@base%base.png", w, h);
@@ -835,6 +934,7 @@ void display_chooce_stage() {
 }
 
 void display_chooce_mode() {
+	grids.clear();//析构所有宫格
 	//粘贴返回贴图
 	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 
@@ -864,7 +964,9 @@ void display_chooce_mode() {
 	}
 }
 
+//游玩随机生成关卡
 void display_play() {
+	grids.clear();//析构所有宫格
 	//换背景
 	cleardevice();
 	loadimage(&play_background, "assets//play_background.png", w, h);
@@ -927,7 +1029,7 @@ void display_play() {
 				back.act_button(display_menu);
 				for (int i = 0; i <= 60; i++) {
 					if (grids[i].reverse_or_not()) {
-						if (!grids[i].reverse_color()) {
+						if (!grids[i].reverse_color(mode)) {
 							you_lose(chessboard);
 						};//点击时反转的宫格
 						judge_msg = i;
@@ -943,7 +1045,7 @@ void display_play() {
 								else {
 									for (int j = 0; j <= 60; j++) {
 										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
-											if (!grids[j].reverse_color()) {
+											if (!grids[j].reverse_color(mode)) {
 												you_lose(chessboard);
 											};
 											judge_msg = j;
@@ -980,6 +1082,7 @@ void display_play() {
 	}
 }
 
+//游玩某指定关卡
 void retry(bool* chessboard) {
 	//换背景
 	cleardevice();
@@ -1048,7 +1151,7 @@ void retry(bool* chessboard) {
 				back.act_button(display_menu);
 				for (int i = 0; i <= 60; i++) {
 					if (grids[i].reverse_or_not()) {
-						if (!grids[i].reverse_color()) {
+						if (!grids[i].reverse_color(mode)) {
 							you_lose(chessboard);
 						};//点击时反转的宫格
 						judge_msg = i;
@@ -1064,7 +1167,7 @@ void retry(bool* chessboard) {
 								else {
 									for (int j = 0; j <= 60; j++) {
 										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
-											if (!grids[j].reverse_color()) {
+											if (!grids[j].reverse_color(mode)) {
 												you_lose(chessboard);
 											};
 											judge_msg = j;
