@@ -45,6 +45,7 @@ IMAGE title;
 IMAGE background,rule_background,play_background;
 IMAGE quit, play, load, how_to_play, setting, pic, pic_mask, grid0,grid0_mask, grid1;
 IMAGE button_mask;
+IMAGE hint_window, hint_window_mask;
 //IMAGE *back_mask=&back+1;
 COLORREF color;
 
@@ -318,6 +319,10 @@ public:
 
 	const bool get_color() {
 		return grid_color;
+	}
+
+	const int get_reversed_time() {
+		return reversed_time;
 	}
 };
 
@@ -964,6 +969,43 @@ void display_chooce_mode() {
 	}
 }
 
+//当前位于grids[i]时，给出提示
+void hint(int i,int xhint,int yhint ,int whint,int hhint) {
+	bool color_now = 0;
+	int circle_now=-1;
+	for (int j = 0; j < 61; j++) {
+		if (grids[j].get_reversed_time() != 0) {
+			if (grids[j].get_circle() != circle_now) {
+				color_now = grids[j].get_color();
+			}
+			else {
+				if (grids[j].get_color() != color_now) {
+					//败局已定,能给0个提示
+					put_png(xhint, yhint, &hint_window);
+					center_text(whint, hhint, xhint, yhint, "寄");
+					return;
+				}
+			}
+		}
+	}
+
+	//从同圈检查中活下来了说是
+	for (int k = -1; k < 2; k++) {
+		for (int j = 0; j < 61; j++) {
+			if (grids[j].get_circle() == grids[i].get_circle() + k && grids[j].get_reversed_time() != 0) {
+				color_now = grids[j].get_color();
+				break;
+			}
+		}
+		for (int j = 0; j < 61; j++) {
+			if (grids[j].get_circle() == grids[i].get_circle() + k && adjacent_or_not(i, j) && grids[j].get_color() != grids[i].get_color()) {
+				//提示grids[j]
+
+			}
+		}
+	}
+}
+
 //游玩随机生成关卡
 void display_play() {
 	grids.clear();//析构所有宫格
@@ -1009,6 +1051,11 @@ void display_play() {
 	center_text(length, length, w - text_length - length, h - y_to_btm - length, "S");
 	center_text(text_length, length, w - text_length, h - y_to_btm - length , "存档");
 
+	int  whint = 1.2*214, hhint = 1.2*246,xhint=w- whint, yhint=240;
+	loadimage(&hint_window, "assets\\sys_base@helpbase%layer.png", whint, hhint);
+	loadimage(&hint_window_mask, "assets\\sys_base@helpbase%layer_mask.png", whint, hhint);
+
+	put_png(xhint, yhint, &hint_window, &hint_window_mask);
 	//缓冲完毕开始绘图
 	EndBatchDraw();
 	
