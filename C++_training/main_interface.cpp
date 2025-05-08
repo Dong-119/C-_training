@@ -46,7 +46,7 @@ int w = 1360, h = 765;
 //声明背景图和贴图
 IMAGE title;
 IMAGE background,rule_background,play_background;
-IMAGE quit, play, load, how_to_play, setting, pic, pic_mask, grid0,grid0_mask, grid1;
+IMAGE quit, play, load, how_to_play, setting, pic, pic_mask, grid0, grid0_mask, grid1;
 IMAGE button_mask;
 IMAGE hint_window, hint_window_mask;
 //IMAGE *back_mask=&back+1;
@@ -253,8 +253,7 @@ public:
 		this->y = y;
 		this->circle = circle;
 		this->position = position;
-		putimage(x, y, &grid0_mask, NOTSRCERASE);
-		putimage(x, y, &grid0, SRCINVERT);
+		put_png(x, y, &grid0, &grid0_mask);
 	}
 
 	void set_reversed_time(int n){
@@ -273,7 +272,7 @@ public:
 					put_png(x, y, &grid_cover, &grid_cover_mask);
 				}
 				else {
-					put_png(x, y, &grid1);
+					put_png(x, y, &grid1, &grid0_mask);
 					put_png(x, y, &grid_cover, &grid_cover_mask);
 				}
 				reversed_time++;
@@ -289,7 +288,7 @@ public:
 				if (grid_color == false) {
 					put_png(x, y, &grid0, &grid0_mask);
 				}
-				else {put_png(x, y, &grid1); }
+				else {put_png(x, y, &grid1, &grid0_mask); }
 				reversed_time++;
 				return true;
 			}
@@ -312,10 +311,9 @@ public:
 	void reverse_set_question() {
 		grid_color = !grid_color;
 		if (grid_color == false) {
-			putimage(x, y, &grid0_mask, NOTSRCERASE);
-			putimage(x, y, &grid0, SRCINVERT);
+			put_png(x, y, &grid0, &grid0_mask);
 		}
-		else { putimage(x, y, &grid1, SRCAND); }
+		else { put_png(x, y, &grid1, &grid0_mask); }
 	}
 
 	bool reverse_or_not () {
@@ -325,6 +323,20 @@ public:
 		else {
 			return false;
 		}
+	}
+
+	void hint_cover() {
+		IMAGE grid_hint_cover, grid_hint_cover_mask;
+		loadimage(&grid_hint_cover, "assets//grid_hint_cover.png", grid0.getwidth(), grid0.getheight());
+		loadimage(&grid_hint_cover_mask, "assets//grid_cover_mask.png", grid0.getwidth(), grid0.getheight());
+		put_png(x, y, &grid_hint_cover, &grid_hint_cover_mask);
+	}
+
+	void hint_wrong_cover() {
+		IMAGE grid_wrong_cover, grid_wrong_cover_mask;
+		loadimage(&grid_wrong_cover, "assets//grid_wrong_cover.png", grid0.getwidth(), grid0.getheight());
+		loadimage(&grid_wrong_cover_mask, "assets//grid_wrong_cover_mask.png", grid0.getwidth(), grid0.getheight());
+		put_png(x, y, &grid_wrong_cover, &grid_wrong_cover_mask);
 	}
 
 	const int get_circle(){
@@ -433,17 +445,26 @@ bool adjacent_or_not(int judge_msg,int j) {
 	}
 }
 
-static int final_answer[5];
+//记录本局答案
+int answer[61] = { 0 };
 
 void set_question_auto(int num) {
+	//记录需反转宫格编号
 	int* reverse = new int[num];
+	//记录当前格周围可反转的宫格，记录整个棋盘颜色情况
 	int container[6] = {0}, recorder[61] = { 0 };
+	//记录当前格周围可反转的宫格数量
 	int counter = 0;
+	//随机生成起点
 	int i = rand() % 61;
 	for (int k=0;k<num;k++) {
+		//反转当前宫格颜色
 		recorder[i] = 1;
+		//记录当前格编号
 		reverse[k] = i;
+		//重置当前格周围可反转的宫格数量
 		counter = 0;
+		//将当前格周围可翻转格记录在容器中
 		for (int j = 0; j < 61; j++) {
 			if (!recorder[j]) {
 				if (adjacent_or_not(i, j)) {
@@ -452,29 +473,37 @@ void set_question_auto(int num) {
 				}
 			}
 		}
+		//如果出题到死路，重新出题
 		if (counter == 0&&k!=num-1) {
 			set_question_auto(num);
 			return;
-		}
+		}//如果出题可以正常进行，更新当前格
 		else if (k != num - 1) {
 			i = container[rand() % counter];
 		}
 	}
+	//随机生成每圈颜色
+change_circle_color:
+	int check[5];
 	for (int k = 0; k < 5; k++) {
-		if (rand() % 2) {
+		if (check[k]=rand() % 2) {
 			for (int l = 0; l < 61; l++) {
 				if (grids[l].get_circle() == k) {
 					grids[l].reverse_set_question();
 				}
 			}
-			final_answer[k] = 1;
-		}
-		else {
-			final_answer[k] = 0;
 		}
 	}
+	if (check[0] == check[1] &&check[1] == check[2] &&check[2] == check[3] &&check[3] ==check[4] ) {
+		goto change_circle_color;
+	}
+	//反转颜色，完成出题
 	for (int k = 0; k < num; k++) {
 		grids[reverse[k]].reverse_set_question();
+	}
+	//记录答案盘面
+	for (int k = 0; k < 61; k++) {
+		answer[k] = recorder[k];
 	}
 }
 
@@ -637,20 +666,19 @@ void display_how_to_play() {
 	center_text(w, h / 12, 0, h / 3 + h / 4, "当每圈所有宫格颜色相同时，答题成功。");
 
 	//开始游戏按钮
-	color = RGB(200, 0, 0);
-	settextcolor(color);
-	settextstyle(50, 0, "华文行楷", 0, 0, 100, false, false, false);
-	center_text(w - 100, h / 4, 100, 3 * h / 4, "开始游戏");
+	int wbt = 200, hbt = 50;
+	settextcolor(WHITE);
+	settextstyle(30, 0, "华文行楷", 0, 0, 100, false, false, false);
+	button start(w/2, 3 * h / 4+80 , wbt, hbt, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "开始游戏");
 
 	//持续捕捉鼠标信息
 	while (1) {
 		back.act_over_mask();
+		start.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
-				if ((msg.x > 100 + (w - textwidth("开始游戏") - 100) / 2 && msg.x < w - (w - 100 - textwidth("开始游戏")) / 2) && (msg.y > 3 * h / 4 + (h / 4 - textheight("开始游戏")) / 2 && msg.y < h - (h / 4 - textheight("开始游戏")) / 2)) {
-					display_play();//点击开始游戏按钮将会跳转至游戏界面
-				}
+				start.act_button(display_chooce_mode);
 			}
 		}
 	}
@@ -994,45 +1022,21 @@ void display_chooce_mode() {
 }
 
 //当前位于grids[i]时，给出提示
-void hint(int i,int xhint,int yhint ,int whint,int hhint) {
-	bool color_now = 0;
-	int circle_now=-1;
-	for (int j = 0; j < 61; j++) {
-		if (grids[j].get_reversed_time() != 0) {
-			if (grids[j].get_circle() != circle_now) {
-				circle_now = grids[j].get_circle();
-				color_now = grids[j].get_color();
-			}
-			else {
-				if (grids[j].get_color() != color_now) {
-					//败局已定,能给0个提示
-					put_png(xhint, yhint, &hint_window,&hint_window_mask);
-					settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
-					settextcolor(BLACK);
-					center_text(whint, hhint, xhint, yhint, "丸辣");
-					return;
-				}
-			}
+void hint(int xhint,int yhint ,int whint,int hhint) {
+	for (int i = 0; i < 61; i++) {
+		if (answer[i]&&grids[i].get_reversed_time()==0) {
+			//高亮提示答案路线
+			grids[i].hint_cover();
+		}
+		else if (!answer[i] && grids[i].get_reversed_time() == 1) {
+			//高亮提示错误步骤
+			grids[i].hint_wrong_cover();
 		}
 	}
-
-	//从同圈检查中活下来了说是
-	for (int k = -1; k < 2; k++) {
-		for (int j = 0; j < 61; j++) {
-			if (grids[j].get_circle() == grids[i].get_circle() + k && grids[j].get_reversed_time() != 0) {
-				color_now = grids[j].get_color();
-				break;
-			}
-		}
-		for (int j = 0; j < 61; j++) {
-			if (grids[j].get_circle() == grids[i].get_circle() + k && adjacent_or_not(i, j) && grids[j].get_color() != grids[i].get_color()) {
-				//提示grids[j]
-				grids[j].reverse_set_question();
-				Sleep(100);
-				grids[j].reverse_set_question();
-			}
-		}
-	}
+	put_png(xhint, yhint, &hint_window, &hint_window_mask);
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	center_text(whint, hhint, xhint, yhint, "提示信息已高亮显示");
 }
 
 const static int whint = 1.2 * 214, hhint = 1.2 * 246, xhint = w - whint, yhint = 240;
@@ -1132,7 +1136,7 @@ void play_interact(button back,bool* chessboard) {
 									display_save(chessboard, level, img);
 								}
 								else if (msg.vkcode == 0x48) {
-									hint(judge_msg, xhint, yhint, whint, hhint);
+									hint(xhint, yhint, whint, hhint);
 								}
 								else if (msg.vkcode == 0x52) {
 									retry(chessboard);
@@ -1150,6 +1154,9 @@ void play_interact(button back,bool* chessboard) {
 					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 					display_save(chessboard, level, img);
+				}
+				else if (msg.vkcode == 0x48) {
+					hint(xhint, yhint, whint, hhint);
 				}
 				else if (msg.vkcode == 0x52) {
 					retry(chessboard);
@@ -1174,7 +1181,7 @@ void display_play() {
 
 	set_chessboard();
 
-	set_question_auto(rand()%11+20);
+	set_question_auto(rand()%8+36);
 
 	//记录本关盘面，供重试功能使用
 	bool chessboard[61];
