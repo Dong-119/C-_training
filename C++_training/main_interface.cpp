@@ -30,14 +30,18 @@
 using namespace std;
 
 void put_png(int x, int y, IMAGE* img) {
+	BeginBatchDraw();
 	//贴图无白色
 	putimage(x, y, img, SRCAND);
+	EndBatchDraw();
 }
 
 void put_png(int x, int y, IMAGE* img,IMAGE* img_mask) {
+	BeginBatchDraw();
 	//贴图有白色，需掩码图
 	putimage(x, y, img_mask, NOTSRCERASE);
 	putimage(x, y, img, SRCINVERT);
+	EndBatchDraw();
 }
 
 //设置画布参数
@@ -64,6 +68,8 @@ int level = 1;
 int mode = 1;
 //定义当前BGM状态
 int music = -1;
+//定义音量
+int volume=100;
 //切换BGM函数
 void music_change_to(int i) {
 	if (i == music)return;
@@ -76,6 +82,9 @@ void music_change_to(int i) {
 		PlaySound(TEXT("assets//play.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	}
 }
+
+//记录本局答案
+int answer[61] = { 0 };
 
 //定义函数
 void display_menu();
@@ -445,9 +454,6 @@ bool adjacent_or_not(int judge_msg,int j) {
 	}
 }
 
-//记录本局答案
-int answer[61] = { 0 };
-
 void set_question_auto(int num) {
 	//记录需反转宫格编号
 	int* reverse = new int[num];
@@ -458,6 +464,10 @@ void set_question_auto(int num) {
 	//随机生成起点
 	int i = rand() % 61;
 	for (int k=0;k<num;k++) {
+		if (i == 0) {//如果路径经过中心格，重新出题，减少题目过于简单概率
+			set_question_auto(num);
+			return;
+		}
 		//反转当前宫格颜色
 		recorder[i] = 1;
 		//记录当前格编号
@@ -494,9 +504,16 @@ change_circle_color:
 			}
 		}
 	}
+	//如果每圈颜色都相同，重新设置每圈颜色
 	if (check[0] == check[1] &&check[1] == check[2] &&check[2] == check[3] &&check[3] ==check[4] ) {
 		goto change_circle_color;
 	}
+	//如果同色可以一笔完成，过于简单重新出题
+	
+
+	//保留
+
+
 	//反转颜色，完成出题
 	for (int k = 0; k < num; k++) {
 		grids[reverse[k]].reverse_set_question();
@@ -684,6 +701,10 @@ void display_how_to_play() {
 	}
 }
 
+DWORD CalculateVolume(int leftPercent, int rightPercent) {
+	return (DWORD)((leftPercent * 0xFFFF / 100) | ((rightPercent * 0xFFFF / 100) << 16));
+}
+
 void display_setting() {
 	grids.clear();//析构所有宫格
 	IMAGE setting_background;
@@ -704,7 +725,7 @@ void display_setting() {
 	settextcolor(WHITE);
 	setbkmode(TRANSPARENT);
 	int xmode = xbackgroundpopup + 40, ymode = hback + 40 + 20 , wmode = 200, hmode = 360, htext = 40;
-	center_text(wmode, htext, xmode, ymode, "难度选择");
+	center_text(4*wmode, htext, xmode, ymode, "难度选择");
 
 	int wbox = 20, hbox = 20;
 	vector<button> mode_chooce;
@@ -713,14 +734,40 @@ void display_setting() {
 	mode_chooce.emplace_back(xmode + wmode - wbox, ymode + htext + ((hmode - htext) / 3 - hbox) / 2 + 2*(hmode - htext) / 3, wbox, hbox, "assets//sys_page1@use__speech%button;normal;off.png", "assets//sys_page1@use__speech%button;over;off.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
 	mode_chooce[mode].change_image("assets//sys_page1@use__speech%button;normal;on.png", "assets//sys_page1@use__speech%button;over;on.png", "assets//sys_page1@use__speech%button;normal;off_mask.png");
 
-	//IMAGE volume, volume_up, volume_down, volume_mask, volume_up_mask, volume_down_mask;
-	//int wvolume = 60, hvolume = 30, avolume = 30;
-	//button(xmode + wmode)
-
 	settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
 	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext, "简单模式");
 	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext+ (hmode - htext) / 3, "普通模式");
 	center_text(wmode - wbox, (hmode - htext) / 3, xmode, ymode + htext+ 2 * (hmode - htext) / 3, "困难模式");
+	settextstyle(18, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(3*wmode , (hmode - htext) / 3, xmode+ wmode, ymode + htext, "被反转过的宫格将被标记并反转颜色");
+	center_text(3*wmode , (hmode - htext) / 3, xmode+ wmode, ymode + htext + (hmode - htext) / 3, "被反转过的宫格将被反转颜色但不会被标记");
+	center_text(3*wmode , (hmode - htext) / 3, xmode+ wmode, ymode + htext + 2 * (hmode - htext) / 3, "被反转过的宫格将不会有任何变化，需玩家记忆");
+
+	int xvolume = xmode + 4 * wmode, yvolume = ymode, wvolume = 2*wmode, hvolume = htext;
+	settextstyle(40, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(wvolume, hvolume, xvolume, yvolume, "音量调节");
+
+	//定义音量显示框贴图
+	IMAGE box,box_mask;
+	//定义音量显示框长宽参数
+	wbox = 80, hbox = 40;
+	//定义加减符长宽
+	int block = 40;
+
+	loadimage(&box, "assets//file_qload@edit%sysbutton;normal.png", wbox, hbox);
+	loadimage(&box_mask, "assets//file_qload@edit%sysbutton;normal_mask.png", wbox, hbox);
+
+	//定义音量显示框位置参数
+	int xbox = xvolume + block + (wvolume - 2 * block - wbox) / 2, ybox = yvolume + 3 * hvolume;
+	put_png(xbox, ybox, &box, &box_mask);
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(wbox, hbox, xbox, ybox, to_string(volume).c_str());
+
+	//定义加减符位置参数
+	int xmi = xvolume, xpl = xvolume + wvolume - block, ymi = yvolume + 3 * hvolume, ypl = yvolume + 3 * hvolume;
+	settextstyle(block, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(block, block, xmi, ymi, "-");
+	center_text(block, block, xpl, ypl, "+");
 
 	//持续捕捉鼠标信息
 	while (1) {
@@ -739,6 +786,22 @@ void display_setting() {
 							}
 						}
 					}
+				}
+				if (msg.x > xmi && msg.x<xmi + block && msg.y>ymi && msg.y < ymi + block) {
+					if (volume == 0)continue;
+					volume -= 10;
+					waveOutSetVolume(NULL, CalculateVolume(volume,volume));
+					put_png(xbox, ybox, &box, &box_mask);
+					settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+					center_text(wbox, hbox, xbox, ybox, to_string(volume).c_str());
+				}
+				else if (msg.x > xpl && msg.x<xpl + block && msg.y>ypl && msg.y < ypl + block) {
+					if (volume == 100)continue;
+					volume += 10;
+					waveOutSetVolume(NULL, CalculateVolume(volume, volume));
+					put_png(xbox, ybox, &box, &box_mask);
+					settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+					center_text(wbox, hbox, xbox, ybox, to_string(volume).c_str());
 				}
 			}
 		}
@@ -760,6 +823,9 @@ void save_in(int save_position,IMAGE img, bool* chessboard, int level) {
 
 	for (int i = 0; i < 61; i++) {
 		chessboard_save_stream << chessboard[i];
+	}
+	for (int i = 0; i < 61; i++) {
+		chessboard_save_stream << answer[i];
 	}
 }
 
@@ -869,6 +935,9 @@ void load_to (const char* chessboard_file_name) {
 	for (int i = 0; i < 61; i++) {
 		chessboard[i] = numbers[i];
 	}
+	/////////////////////////////////////////////////for (int i = 61; i < 122; i++) {
+	/////////////////////////////////////////////////	answer[i - 61] = numbers[i];
+	/////////////////////////////////////////////////}
 
 	// 关闭文件
 	inputFile.close();
@@ -1181,7 +1250,7 @@ void display_play() {
 
 	set_chessboard();
 
-	set_question_auto(rand()%8+36);
+	set_question_auto(rand()%6+36);
 
 	//记录本关盘面，供重试功能使用
 	bool chessboard[61];
