@@ -3,7 +3,6 @@
 //普通模式：被反转过的宫格将被反转颜色但不会被标记
 //困难模式：被反转过的宫格将不会有任何变化，需玩家记忆
 
-
 /*《最强大脑》中的“提笔乾坤”规则如下：
 
 1.游戏界面：游戏在一个六边形盘面中进行，盘面上乱序分布着黑白两种颜色的宫格。
@@ -13,7 +12,6 @@
 
 该游戏考验玩家的逻辑思维能力和空间想象力，需要玩家仔细观察和规划操作路径，以达到目标。*/
 
-
 //先用电脑生成路径作为答案，然后每一圈按照路径与非路径随机填色
 
 #include<iostream>
@@ -21,6 +19,7 @@
 #include <stdio.h>
 #include <graphics.h>
 #include <vector>
+#include <set>
 #include <time.h>
 #include <conio.h>
 #include<fstream>
@@ -367,9 +366,8 @@ public:
 
 vector<Grid> grids;
 
+//如果j与judge_msg相邻返回ture,为相同格或不相邻格返回false
 bool adjacent_or_not(int judge_msg,int j) {
-	//如果j与judge_msg相邻返回ture
-
 	if (judge_msg != j) {
 		if (grids[judge_msg].get_circle() == 0) {
 			//如果前一个宫格是中心宫格
@@ -454,6 +452,55 @@ bool adjacent_or_not(int judge_msg,int j) {
 	}
 }
 
+//检查某相同色是否连成一片，是则返回true，否则返回false
+bool one_piece_or_not(vector<int> color) {
+	// 绿色宫格数组取第一个作为当前格域，遍历整个数组寻找相邻同色宫格
+	vector<int>now; vector<int>next;
+	now.push_back(color.at(0));
+	color.erase(color.begin());
+	while (1) {
+		next.clear();
+		// 如有则在原本绿色格数组中删除当前格并记录其相邻同色宫格编号到当前格数组，再遍历当前格中每个元素找出与当前格域相邻的格为新的当前格域
+		for (const auto& same_color : color) {
+			for (const auto& now_grid : now) {
+				if (adjacent_or_not(now_grid, same_color)) {
+					next.push_back(same_color);
+					break;
+				}
+			}
+		}
+		set<int> setNow(now.begin(), now.end());
+		color.erase(std::remove_if(color.begin(), color.end(), [&setNow](int value) {
+			return setNow.find(value) != setNow.end();
+			}), color.end());
+		now.clear();
+		now = next;
+		// 如果最终所有绿色格都为当前格，则说明连成一片
+		if (now == color)return true;
+		else if (next.empty())return false;
+	}
+}
+
+//尽头检测，返回本颜色宫格尽头数
+int ends_num(vector<int> color) {
+	//记录当前格相邻同色格数，初始化为零
+	int counter = 0;
+	//记录尽头数，初始化为零
+	int ends = 0;
+	for (const auto& this_grid : color) {
+		//计数器复位
+		counter = 0;
+		for (const auto& grid : color) {
+			if (adjacent_or_not(this_grid, grid))counter++;
+			if (counter > 1)break;
+		}
+		if (counter == 1){
+			ends++;
+		}
+	}
+	return ends;
+}
+
 void set_question_auto(int num) {
 	//记录需反转宫格编号
 	int* reverse = new int[num];
@@ -493,6 +540,7 @@ void set_question_auto(int num) {
 		}
 	}
 	//随机生成每圈颜色
+	BeginBatchDraw();
 change_circle_color:
 	int check[5];
 	for (int k = 0; k < 5; k++) {
@@ -504,16 +552,43 @@ change_circle_color:
 			}
 		}
 	}
-	//如果每圈颜色都相同，重新设置每圈颜色
+	// 如果每圈颜色都相同，重新设置每圈颜色
 	if (check[0] == check[1] &&check[1] == check[2] &&check[2] == check[3] &&check[3] ==check[4] ) {
 		goto change_circle_color;
 	}
-	//如果同色可以一笔完成，过于简单重新出题
-	
-
-	//保留
-
-
+	// 如果同色可以一笔完成，过于简单重新出题，具体方式如下：
+	// 遍历宫格将绿色与白色宫格编号分别储存在两个数组中
+	vector<int>green;
+	vector<int>white;
+	//中心宫格可经过可不经过不在考虑范围内
+	green.push_back(0);
+	white.push_back(0);
+	for (int i = 1; i < 61; i++) {
+		if (grids[i].get_color()) {
+			green.push_back(i);
+		}
+		else {
+			white.push_back(i);
+		}
+	}
+	// 当同色连成一片，进行尽头统计
+	// “尽头”指周围只有一个同色宫格的宫格，如果玩家试图一笔连接这种颜色的宫格，具备该特征的宫格只能用作开头或结尾
+	// 若尽头数<=2，题目过于简单重新出题，否则无需重新出题
+	if (one_piece_or_not(green)) {
+		if (ends_num(green) <= 2) {
+			set_question_auto(num);
+			EndBatchDraw();
+			return;
+		}
+	}
+	// 白色同理
+	if (one_piece_or_not(white)) {
+		if (ends_num(white) <= 2) {
+			set_question_auto(num);
+			EndBatchDraw();
+			return;
+		}
+	}
 	//反转颜色，完成出题
 	for (int k = 0; k < num; k++) {
 		grids[reverse[k]].reverse_set_question();
@@ -1090,7 +1165,6 @@ void display_chooce_mode() {
 	}
 }
 
-//当前位于grids[i]时，给出提示
 void hint(int xhint,int yhint ,int whint,int hhint) {
 	for (int i = 0; i < 61; i++) {
 		if (answer[i]&&grids[i].get_reversed_time()==0) {
