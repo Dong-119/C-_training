@@ -68,7 +68,7 @@ int mode = 1;
 //定义当前BGM状态
 int music = -1;
 //定义音量
-int volume=100;
+int volume=20;
 //切换BGM函数
 void music_change_to(int i) {
 	if (i == music)return;
@@ -80,6 +80,11 @@ void music_change_to(int i) {
 		music = 1;
 		PlaySound(TEXT("assets//play.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	}
+}
+
+//计算音量函数
+DWORD CalculateVolume(int leftPercent, int rightPercent) {
+	return (DWORD)((leftPercent * 0xFFFF / 100) | ((rightPercent * 0xFFFF / 100) << 16));
 }
 
 //记录本局答案
@@ -472,7 +477,7 @@ bool one_piece_or_not(vector<int> color) {
 		set<int> setNow(now.begin(), now.end());
 		color.erase(std::remove_if(color.begin(), color.end(), [&setNow](int value) {
 			return setNow.find(value) != setNow.end();
-			}), color.end());
+		}), color.end());
 		now.clear();
 		now = next;
 		// 如果最终所有绿色格都为当前格，则说明连成一片
@@ -501,7 +506,18 @@ int ends_num(vector<int> color) {
 	return ends;
 }
 
+//重置盘面为全白
+void reset_grids() {
+	for (int i = 0; i < 61; i++) {
+		if (grids[i].get_color()) {
+			grids[i].reverse_set_question();
+		}
+	}
+}
+
 void set_question_auto(int num) {
+	//重置盘面
+	reset_grids();
 	//记录需反转宫格编号
 	int* reverse = new int[num];
 	//记录当前格周围可反转的宫格，记录整个棋盘颜色情况
@@ -556,6 +572,11 @@ change_circle_color:
 	if (check[0] == check[1] &&check[1] == check[2] &&check[2] == check[3] &&check[3] ==check[4] ) {
 		goto change_circle_color;
 	}
+	
+	//反转颜色，完成出题
+	for (int k = 0; k < num; k++) {
+		grids[reverse[k]].reverse_set_question();
+	}
 	// 如果同色可以一笔完成，过于简单重新出题，具体方式如下：
 	// 遍历宫格将绿色与白色宫格编号分别储存在两个数组中
 	vector<int>green;
@@ -574,6 +595,7 @@ change_circle_color:
 	// 当同色连成一片，进行尽头统计
 	// “尽头”指周围只有一个同色宫格的宫格，如果玩家试图一笔连接这种颜色的宫格，具备该特征的宫格只能用作开头或结尾
 	// 若尽头数<=2，题目过于简单重新出题，否则无需重新出题
+
 	if (one_piece_or_not(green)) {
 		if (ends_num(green) <= 2) {
 			set_question_auto(num);
@@ -588,10 +610,6 @@ change_circle_color:
 			EndBatchDraw();
 			return;
 		}
-	}
-	//反转颜色，完成出题
-	for (int k = 0; k < num; k++) {
-		grids[reverse[k]].reverse_set_question();
 	}
 	//记录答案盘面
 	for (int k = 0; k < 61; k++) {
@@ -639,6 +657,31 @@ void you_win(void next_stage()) {
 	}
 }
 
+void you_win_last_stage() {
+	grids.clear();//析构所有宫格
+	level++;
+	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
+	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
+	int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
+	put_png(ximg, yimg, &pop_up, &pop_up_mask);
+	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+	center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "GAME CLEAR");
+	int wbt = 200; int hbt = 50;
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	button back(ximg + pop_up.getwidth() / 3 + (2 * pop_up.getwidth() / 3 - wbt) / 2, yimg + 2 * pop_up.getheight() / 3 + (pop_up.getheight() / 3 - hbt) / 2, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "主菜单");
+	while (1) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			back.act_over_mask();
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+			}
+		}
+	}
+}
+
 void you_lose(bool *chessboard) {
 	grids.clear();//析构所有宫格
 	level = 1;
@@ -667,14 +710,21 @@ void you_lose(bool *chessboard) {
 	}
 }
 
+//适配其他函数所做出的改动
 void exit() {
 	exit(0);
 }
 
 void display_menu(){
-	grids.clear();//析构所有宫格
+	//重置关卡数
+	level = 1;
+	//析构所有宫格
+	grids.clear();
+	//设置音量
+	waveOutSetVolume(NULL, CalculateVolume(volume, volume));
 	//切BGM
 	music_change_to(0);
+	//加载贴图
 	loadimage(&pic, "assets//menu_pic.png", 500, 500);
 	loadimage(&pic_mask, "assets//menu_pic_mask.png", 500, 500);
 	loadimage(&background, "assets//background.png", w, h);
@@ -774,10 +824,6 @@ void display_how_to_play() {
 			}
 		}
 	}
-}
-
-DWORD CalculateVolume(int leftPercent, int rightPercent) {
-	return (DWORD)((leftPercent * 0xFFFF / 100) | ((rightPercent * 0xFFFF / 100) << 16));
 }
 
 void display_setting() {
@@ -972,31 +1018,30 @@ void load_to (const char* chessboard_file_name) {
 
 	// 打开文件
 	ifstream inputFile(chessboard_file_name);
-	if (!inputFile.is_open()) {
-
-		//cerr << "无法打开文件！" << endl;
-		loadimage(&pop_up, "assets//pop_up.png", 0, 0);
-		loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
-		int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
-		put_png(ximg, yimg, &pop_up, &pop_up_mask);
-		settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
-		settextcolor(BLACK);
-		setbkmode(TRANSPARENT);
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "无法打开文件");
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3-40, "请重新输入文件地址");
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3, "文件地址不要加引号");
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3+40, "并确认是否用\\\\作地址分隔符");
-		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+2* pop_up.getheight() / 3, "按任意键返回");
-
-		//持续捕捉鼠标信息
-		while (1) {
-			if (peekmessage(&msg, EX_KEY)) {
-				if (msg.message == WM_KEYDOWN) {
-					display_menu();
-				}
-			}
-		}
-	}
+	//if (!inputFile.is_open()) {
+	//
+	//	//loadimage(&pop_up, "assets//pop_up.png", 0, 0);
+	//	//loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
+	//	//int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
+	//	//put_png(ximg, yimg, &pop_up, &pop_up_mask);
+	//	//settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
+	//	//settextcolor(BLACK);
+	//	//setbkmode(TRANSPARENT);
+	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "无法打开文件");
+	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3-40, "请重新输入文件地址");
+	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3, "文件地址不要加引号");
+	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3+40, "并确认是否用\\\\作地址分隔符");
+	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+2* pop_up.getheight() / 3, "按任意键返回");
+	//
+	//	//持续捕捉鼠标信息
+	//	//while (1) {
+	//	//	if (peekmessage(&msg, EX_KEY)) {
+	//	//		if (msg.message == WM_KEYDOWN) {
+	//	//			display_menu();
+	//	//		}
+	//	//	}
+	//	//}
+	//}
 
 	char ch;
 	// 逐字符读取文件内容
@@ -1010,9 +1055,9 @@ void load_to (const char* chessboard_file_name) {
 	for (int i = 0; i < 61; i++) {
 		chessboard[i] = numbers[i];
 	}
-	/////////////////////////////////////////////////for (int i = 61; i < 122; i++) {
-	/////////////////////////////////////////////////	answer[i - 61] = numbers[i];
-	/////////////////////////////////////////////////}
+	for (int i = 61; i < 122; i++) {
+		answer[i - 61] = numbers[i];
+	}
 
 	// 关闭文件
 	inputFile.close();
@@ -1021,12 +1066,63 @@ void load_to (const char* chessboard_file_name) {
 }
 
 void load_to_input() {
-	char str[100];
-	InputBox(str, 100, "请输入盘面文件地址"); // 弹出对话框让用户输入字符串
+	// 设置特殊关卡数以便区分
+	level = 0;
 
-	outtextxy(100, 100, str); // 在窗口中显示用户输入的字符串
+	//记录当前目录，防止路径错误导致的资源无法正常加载
+	char currentDir[256];
+	GetCurrentDirectory(256, currentDir);
 
-	load_to(str);
+	// 定义文件选择对话框的参数
+	OPENFILENAME ofn;
+	char str[100] = ""; // 存储文件路径的字符串
+
+	// 初始化文件选择对话框结构
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = NULL; // 如果有父窗口，可以设置为父窗口的句柄
+	ofn.lpstrFile = str;
+	ofn.nMaxFile = sizeof(str);
+	ofn.lpstrFilter = "All Files\0*.*\0"; // 文件过滤器
+	ofn.nFilterIndex = 1;
+	ofn.lpstrFileTitle = NULL;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = NULL; // 初始目录
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST; // 必须选择存在的文件
+
+	// 弹出文件选择对话框
+	if (GetOpenFileName(&ofn)) {
+		// 如果用户成功选择了文件，str 中将包含文件路径
+		SetCurrentDirectory(currentDir);// 重置当前目录
+		std::ifstream file(str);
+		if (!file.is_open()) {
+			MessageBox(NULL, "未选择文件或选择文件失败", "错误", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		file.close();
+
+		// 检查内容长度
+		if (content.length() != 122) {
+			MessageBox(NULL, "文件类型错误", "错误", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// 检查每个字符是否为0或1
+		for (char c : content) {
+			if (c != '0' && c != '1') {
+				MessageBox(NULL, "文件类型错误", "错误", MB_OK | MB_ICONERROR);
+				return;
+			}
+		}
+
+		load_to(str); // 调用 load_to 函数加载文件
+	}
+	else {
+		// 如果用户取消了选择，或者发生错误
+		MessageBox(NULL, "未选择文件或选择文件失败", "错误", MB_OK | MB_ICONERROR);
+	}
 }
 
 void display_load() {
@@ -1127,6 +1223,7 @@ void display_chooce_stage() {
 				for (int i = 0; i < 5; i++) {
 					std::ostringstream oss;
 					oss << "level " << i + 1; // 拼接三段字符串
+					level = i + 1;
 					chooce_stage[i].act_button(load_to,oss.str().c_str());
 				}
 			}
@@ -1234,7 +1331,10 @@ void set_chessboard() {
 
 }
 
-void play_interact(button back,bool* chessboard) {
+//适配游玩反馈函数，如果闯关模式最终关卡或自定义关卡代替void next_level()用
+void last_level() {};
+
+void play_interact(button back,bool* chessboard, void next_level()) {
 	//持续捕捉鼠标信息
 	int judge_msg;
 	while (1) {
@@ -1252,7 +1352,12 @@ void play_interact(button back,bool* chessboard) {
 							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
 								if (msg.message == WM_LBUTTONUP) {
 									if (complete_or_not()) {
-										you_win(display_play);
+										if (next_level == last_level) {
+											you_win_last_stage();
+										}
+										else {
+											you_win(next_level);
+										}
 									}
 									i = 61;//停止遍历
 									break;
@@ -1332,7 +1437,13 @@ void display_play() {
 		chessboard[i] = grids[i].get_color();
 	}
 
-	play_interact(back,chessboard);
+	play_interact(back,chessboard, display_play);
+}
+
+void next_specific_level() {
+	std::ostringstream oss;
+	oss << "level " << level; // 拼接字符串
+	load_to(oss.str().c_str());
 }
 
 //游玩某指定关卡
@@ -1363,7 +1474,12 @@ void retry(bool* chessboard) {
 		chessboard[i] = grids[i].get_color();
 	}
 
-	play_interact(back, chessboard);
+	if (level == 5 || level == 0) {
+		play_interact(back, chessboard, last_level);
+	}
+	else {
+		play_interact(back, chessboard, next_specific_level);
+	}
 }
 
 int main() {
