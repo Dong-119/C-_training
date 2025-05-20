@@ -63,8 +63,10 @@ int wquit = 60, hquit = 60, wbutton = 315, hbutton = 70, wback = 90, hback = 60;
 
 //定义关卡数
 int level = 1;
-//定义模式状态
+//定义模式状态:简单0，普通1，困难2
 int mode = 1;
+//定义游玩模式：无尽0，闯关1，保存或自定义2
+int play_mode = 0;
 //定义当前BGM状态
 int music = -1;
 //定义音量
@@ -211,17 +213,17 @@ public:
 		}
 	}
 
-	void act_button(void f(bool *b),bool *b) {
+	void act_button(void retry(bool *chessboard),bool * chessboard) {
 		//按钮跳转功能
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-			f(b);//点击按钮将会跳转至指定函数
+			retry(chessboard);//点击按钮将会跳转至指定函数
 		}
 	}
 
-	void act_button(void save_in(int save_position,IMAGE img, bool* chessboard, int level), int save_position, IMAGE img, bool* chessboard, int level) {
+	void act_button(void save_in(int save_position,IMAGE img, bool* chessboard), int save_position, IMAGE img, bool* chessboard) {
 		//按钮跳转功能
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-			save_in(save_position, img, chessboard, level);
+			save_in(save_position, img, chessboard);
 		}
 	}
 
@@ -684,7 +686,6 @@ void you_win_last_stage() {
 
 void you_lose(bool *chessboard) {
 	grids.clear();//析构所有宫格
-	level = 1;
 	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
 	int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
@@ -693,6 +694,13 @@ void you_lose(bool *chessboard) {
 	settextcolor(BLACK);
 	setbkmode(TRANSPARENT);
 	center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "YOU LOSE");
+	if (level != 0) {
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + 120, "当前关卡");
+		std::ostringstream oss;
+		oss << "level " << level; // 拼接字符串
+		std::string levelnum = oss.str();
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + 210, levelnum.c_str());
+	}
 	int wbt = 200; int hbt = 50;
 	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
@@ -929,7 +937,7 @@ void display_setting() {
 	}
 }
 
-void save_in(int save_position,IMAGE img, bool* chessboard, int level) {
+void save_in(int save_position,IMAGE img, bool* chessboard) {
 	std::ostringstream oss;
 	oss << "save\\save" << save_position << "\\chessboard_data"; // 拼接三段字符串
 	std::string chessboard_file = oss.str();
@@ -948,12 +956,13 @@ void save_in(int save_position,IMAGE img, bool* chessboard, int level) {
 	for (int i = 0; i < 61; i++) {
 		chessboard_save_stream << answer[i];
 	}
+	chessboard_save_stream << level;
 }
 
 //定义saveload界面缩略图长宽
 int wimg = 229*2/3, himg = 128*2/3;
 
-void display_save(bool *chessboard,int level,IMAGE img) {
+void display_save(bool *chessboard,IMAGE img) {
 	grids.clear();//析构所有宫格
 	IMAGE save_background,save_caption;
 	loadimage(&save_background, "assets\\file_save@base%base.png", w, h );
@@ -1001,7 +1010,7 @@ void display_save(bool *chessboard,int level,IMAGE img) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(retry,chessboard);
 				for (int i = 0; i < 8; i++) {
-					saves[i].act_button(save_in, i+1, img, chessboard ,level);
+					saves[i].act_button(save_in, i+1, img, chessboard);
 					std::ostringstream oss;
 					oss << "save\\save" << i + 1 << "\\image_data.png"; // 拼接三段字符串
 					std::string image_file = oss.str();
@@ -1018,30 +1027,6 @@ void load_to (const char* chessboard_file_name) {
 
 	// 打开文件
 	ifstream inputFile(chessboard_file_name);
-	//if (!inputFile.is_open()) {
-	//
-	//	//loadimage(&pop_up, "assets//pop_up.png", 0, 0);
-	//	//loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
-	//	//int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
-	//	//put_png(ximg, yimg, &pop_up, &pop_up_mask);
-	//	//settextstyle(30, 0, "幼圆", 0, 0, 1000, false, false, false);
-	//	//settextcolor(BLACK);
-	//	//setbkmode(TRANSPARENT);
-	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "无法打开文件");
-	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+ pop_up.getheight() / 3-40, "请重新输入文件地址");
-	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3, "文件地址不要加引号");
-	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg + pop_up.getheight() / 3+40, "并确认是否用\\\\作地址分隔符");
-	//	//center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg+2* pop_up.getheight() / 3, "按任意键返回");
-	//
-	//	//持续捕捉鼠标信息
-	//	//while (1) {
-	//	//	if (peekmessage(&msg, EX_KEY)) {
-	//	//		if (msg.message == WM_KEYDOWN) {
-	//	//			display_menu();
-	//	//		}
-	//	//	}
-	//	//}
-	//}
 
 	char ch;
 	// 逐字符读取文件内容
@@ -1126,6 +1111,10 @@ void load_to_input() {
 }
 
 void display_load() {
+	// 设置特殊关卡数以便区分
+	level = 0;
+	//定义游玩模式为保存或自定义
+	play_mode = 2;
 	grids.clear();//析构所有宫格
 	IMAGE save_background, save_caption;
 	loadimage(&save_background, "assets\\file_load@base%base.png", w, h);
@@ -1192,6 +1181,8 @@ void display_load() {
 
 void display_chooce_stage() {
 	grids.clear();//析构所有宫格
+	//设置游玩模式为闯关
+	play_mode = 1;
 	//设置背景
 	IMAGE chooce_stage_background;
 	loadimage(&chooce_stage_background, "assets\\extra@base%base.png", w, h);
@@ -1381,12 +1372,12 @@ void play_interact(button back,bool* chessboard, void next_level()) {
 									IMAGE img;
 									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
 									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
-									display_save(chessboard, level, img);
+									display_save(chessboard, img);
 								}
-								else if (msg.vkcode == 0x48) {
+								else if (msg.vkcode == 0x48) {// 判断是否按下 h 或 H 键
 									hint(xhint, yhint, whint, hhint);
 								}
-								else if (msg.vkcode == 0x52) {
+								else if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
 									retry(chessboard);
 								}
 							}
@@ -1401,7 +1392,7 @@ void play_interact(button back,bool* chessboard, void next_level()) {
 					IMAGE img;
 					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
-					display_save(chessboard, level, img);
+					display_save(chessboard,img);
 				}
 				else if (msg.vkcode == 0x48) {
 					hint(xhint, yhint, whint, hhint);
@@ -1417,6 +1408,8 @@ void play_interact(button back,bool* chessboard, void next_level()) {
 //游玩随机生成关卡
 void display_play() {
 	grids.clear();//析构所有宫格
+	//重置游玩模式
+	play_mode = 0;
 	//切BGM
 	music_change_to(1);
 	//换背景
@@ -1426,6 +1419,13 @@ void display_play() {
 
 	//粘贴返回贴图
 	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+	std::ostringstream oss;
+	oss << "level " << level; // 拼接字符串
+	std::string levelnum = oss.str();
+	center_text(180, 80, (w - 180) / 4, 60, levelnum.c_str());
 
 	set_chessboard();
 
@@ -1437,13 +1437,96 @@ void display_play() {
 		chessboard[i] = grids[i].get_color();
 	}
 
-	play_interact(back,chessboard, display_play);
+	play_interact(back, chessboard, display_play);
 }
 
 void next_specific_level() {
 	std::ostringstream oss;
 	oss << "level " << level; // 拼接字符串
 	load_to(oss.str().c_str());
+}
+
+void interact(button back, bool* chessboard) {
+	if (play_mode == 0) {
+		play_interact(back, chessboard, display_play);
+		return;
+	}
+	else if (play_mode == 1 && level != 5) {
+		play_interact(back, chessboard, next_specific_level);
+		return;
+	}
+	//持续捕捉鼠标信息
+	int judge_msg;
+	while (1) {
+		back.act_over_mask();
+		if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				for (int i = 0; i <= 60; i++) {
+					if (grids[i].reverse_or_not()) {
+						if (!grids[i].reverse_color(mode)) {
+							you_lose(chessboard);
+						};//点击时反转的宫格
+						judge_msg = i;
+						while (1) {
+							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+								if (msg.message == WM_LBUTTONUP) {
+									if (complete_or_not()) {
+										you_win_last_stage();
+									}
+									i = 61;//停止遍历
+									break;
+								}
+								else {
+									for (int j = 0; j <= 60; j++) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
+											if (!grids[j].reverse_color(mode)) {
+												you_lose(chessboard);
+											};
+											judge_msg = j;
+											break;
+										}
+									}
+								}
+							}
+							else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+							{
+								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+								{
+									IMAGE img;
+									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
+									display_save(chessboard, img);
+								}
+								else if (msg.vkcode == 0x48) {// 判断是否按下 h 或 H 键
+									hint(xhint, yhint, whint, hhint);
+								}
+								else if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
+									retry(chessboard);
+								}
+							}
+						}
+					}
+				}
+			}
+			else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			{
+				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+				{
+					IMAGE img;
+					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
+					display_save(chessboard, img);
+				}
+				else if (msg.vkcode == 0x48) {
+					hint(xhint, yhint, whint, hhint);
+				}
+				else if (msg.vkcode == 0x52) {
+					retry(chessboard);
+				}
+			}
+		}
+	}
 }
 
 //游玩某指定关卡
@@ -1460,7 +1543,19 @@ void retry(bool* chessboard) {
 
 	//粘贴返回贴图
 	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
-
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+	if (level != 0) {
+		settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+		std::ostringstream oss;
+		oss << "level " << level; // 拼接字符串
+		std::string levelnum = oss.str();
+		center_text(180, 80, (w - 180) / 4, 60, levelnum.c_str());
+	}
+	else {
+		settextstyle(32, 0, "幼圆", 0, 0, 1000, false, false, false);
+		center_text(180, 80, (w - 180) / 4, 60, "保存或自定义关卡");
+	}
 	
 	//加载盘面
 	for (int i = 0; i < 61; i++) {
@@ -1474,12 +1569,7 @@ void retry(bool* chessboard) {
 		chessboard[i] = grids[i].get_color();
 	}
 
-	if (level == 5 || level == 0) {
-		play_interact(back, chessboard, last_level);
-	}
-	else {
-		play_interact(back, chessboard, next_specific_level);
-	}
+	interact(back, chessboard);
 }
 
 int main() {
