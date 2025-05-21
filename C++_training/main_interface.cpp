@@ -102,6 +102,7 @@ void you_win(void next_stage());
 void you_lose(bool *chessboard);
 void retry(bool *chessboard);
 void display_chooce_mode();
+void display_set_question();
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -244,6 +245,12 @@ public:
 			return true;
 		}
 		return false;
+	}
+
+	void act_button(void change_circle_color(int n),int n) {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			change_circle_color(n);
+		}
 	}
 
 	void change_image(LPCTSTR img, LPCTSTR img_over, LPCTSTR img_mask) {
@@ -514,6 +521,7 @@ void reset_grids() {
 		if (grids[i].get_color()) {
 			grids[i].reverse_set_question();
 		}
+		grids[i].set_reversed_time(0);
 	}
 }
 
@@ -898,15 +906,22 @@ void display_setting() {
 	center_text(block, block, xmi, ymi, "-");
 	center_text(block, block, xpl, ypl, "+");
 
+	//自定义按钮
+	int wsq=241, hsq = 55;
+	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
+	button set_question(w-wsq-180, h-hsq-180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png","设置自定义关卡");
+
 	//持续捕捉鼠标信息
 	while (1) {
 		back.act_over_mask();
+		set_question.act_over_mask();
 		for (int i = 0; i < 3; i++) {
 			mode_chooce[i].act_over_mask();
 		}
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
+				set_question.act_button(display_set_question);
 				for (int i = 0; i < 3; i++) {
 					if (mode_chooce[i].act_button(i)) {
 						for (int j = 0; j < 3; j++) {
@@ -1319,7 +1334,6 @@ void set_chessboard() {
 	center_text(whint, hhint, xhint, yhint, "按H获得提示");
 	//缓冲完毕开始绘图
 	EndBatchDraw();
-
 }
 
 //适配游玩反馈函数，如果闯关模式最终关卡或自定义关卡代替void next_level()用
@@ -1576,6 +1590,205 @@ void retry(bool* chessboard) {
 	}
 
 	interact(back, chessboard);
+}
+
+void change_circle_color(int n) {
+	for (int i = 0; i < 61; i++) {
+		if (grids[i].get_circle() == n) {
+			grids[i].reverse_set_question();
+		}
+	}
+}
+
+void save_custom_levels() {
+	//记录当前目录，防止路径错误导致的资源无法正常加载
+	char currentDir[256];
+	GetCurrentDirectory(256, currentDir);
+
+	OPENFILENAME ofn;       // common dialog box structure
+	TCHAR szFile[260];       // buffer for file name
+
+	// Initialize OPENFILENAME
+	ZeroMemory(&ofn, sizeof(ofn)); // 将ofn结构体的所有成员初始化为0
+	ofn.lStructSize = sizeof(ofn); // 设置结构体的大小
+	ofn.hwndOwner = NULL; // 设置对话框的父窗口句柄，NULL表示没有父窗口
+	ofn.lpstrFile = szFile; // 设置文件名字符串的缓冲区
+	// Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+	// use the contents of szFile to initialize itself.
+	ofn.lpstrFile[0] = '\0'; // 将文件名缓冲区的第一个字符设置为'\0'，表示空字符串
+	ofn.nMaxFile = sizeof(szFile); // 设置文件名缓冲区的最大长度
+	ofn.lpstrFilter = TEXT("Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0"); // 设置文件类型过滤器
+	ofn.nFilterIndex = 1; // 设置默认的文件类型过滤器索引，1表示第二个过滤器（All Files (*.*)）
+	ofn.lpstrFileTitle = NULL; // 不使用文件标题
+	ofn.nMaxFileTitle = 0; // 文件标题的最大长度
+	ofn.lpstrInitialDir = NULL; // 不设置初始目录
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST; // 设置标志，要求路径和文件必须存在
+
+	// Display the Save As dialog box.
+	if (GetSaveFileName(&ofn) == TRUE) { // 弹出保存文件对话框
+		std::ofstream file(ofn.lpstrFile, std::ios::out); // 尝试以输出模式打开文件
+		if (!file.is_open()) { // 如果文件打开失败
+			MessageBox(NULL, "文件打开失败", "错误", MB_OK | MB_ICONERROR); // 输出错误信息
+		}
+
+		for (int i = 0; i < 61; i++) {
+			file << grids[i].get_color();
+		}
+		for (int i = 0; i < 61; i++) {
+			file << grids[i].get_reversed_time();
+		}
+		file.close(); // 关闭文件
+
+		MessageBox(NULL, "文件保存成功", "保存成功", MB_OK | MB_ICONERROR); // 输出成功创建文件的信息
+	}
+	else {
+		MessageBox(NULL, "取消操作", "保存失败", MB_OK | MB_ICONERROR); // 如果用户取消了操作，输出提示信息
+	}
+	SetCurrentDirectory(currentDir);// 重置当前目录
+}
+
+void display_set_question() {
+	grids.clear();//析构所有宫格
+	//切BGM
+	music_change_to(1);
+	//换背景
+	cleardevice();
+	loadimage(&play_background, "assets//play_background.png", w, h);
+	putimage(0, 0, &play_background);
+
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+	std::ostringstream oss;
+	oss << "level " << level; // 拼接字符串
+	std::string levelnum = oss.str();
+	center_text(180, 80, (w - 180) / 4, 60, levelnum.c_str());
+
+	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
+	int x0 = (w - grid0.getwidth()) / 2, y0 = (h - grid0.getheight()) / 2;//最内圈六边形贴图的左上角坐标
+
+	//开始双缓冲绘图
+	BeginBatchDraw();
+	//生成盘面贴图
+	int xgrid, ygrid;
+	grids.emplace_back(x0, y0, 0, 0);
+	for (int i = 0; i < 5; i++) {
+		ygrid = y0 - i * 2 * deltay;
+		xgrid = x0;
+		for (int j = 0; j < 6 * i; j++) {
+			grids.emplace_back(xgrid, ygrid, i, j);
+			if (j / i == 0) { xgrid += deltax; ygrid += deltay; }
+			else if (j / i == 1) { ygrid += 2 * deltay; }
+			else if (j / i == 2) { xgrid -= deltax; ygrid += deltay; }
+			else if (j / i == 3) { xgrid -= deltax; ygrid -= deltay; }
+			else if (j / i == 4) { ygrid -= 2 * deltay; }
+			else if (j / i == 5) { xgrid += deltax; ygrid -= deltay; }
+		}
+	}
+
+	IMAGE save_image, save_image_mask;
+	int length = 30;
+	int text_length = 100;
+	int y_to_btm = 20;
+	loadimage(&save_image, "assets\\stage.png", length, length);
+	loadimage(&save_image_mask, "assets\\stage_mask.png", length, length);
+	put_png(w - 2 * (text_length + length), h - y_to_btm - length, &save_image, &save_image_mask);
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	center_text(length, length, w - 2 * (text_length + length), h - y_to_btm - length, "R");
+	center_text(text_length, length, w - 2 * text_length - length, h - y_to_btm - length, "重置");
+
+	loadimage(&hint_window, "assets\\sys_base@helpbase%layer.png", whint, hhint);
+	loadimage(&hint_window_mask, "assets\\sys_base@helpbase%layer_mask.png", whint, hhint);
+
+	put_png(xhint, yhint, &hint_window, &hint_window_mask);
+	settextstyle(16, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	center_text(whint, hhint, xhint, yhint-30, "请先一笔画出题解");
+	center_text(whint, hhint, xhint, yhint+30, "再设置每圈颜色是否反转");
+	settextstyle(24, 0, "幼圆", 0, 0, 1000, false, false, false);
+	center_text(50, 50, 100, 120, "点击以反转各圈颜色");
+
+	settextstyle(28, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	button OK(w - 240, h - 140, 160, 50, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png","完成");
+	vector<button> circle_color_change;
+	for (int i = 0; i < 5; i++) {
+		circle_color_change.emplace_back(100, 200 + 80 * i, 50, 50, "assets//stage.png", "assets//stage_over.png", "assets//stage_mask.png", to_string(i+1).c_str());
+	}
+	//缓冲完毕开始绘图
+	EndBatchDraw();
+
+	int judge_msg;
+
+restart:
+	while (1) {
+		back.act_over_mask();
+		OK.act_over_mask();
+		for (int i = 0; i < 5; i++) {
+			circle_color_change[i].act_over_mask();
+		}
+		if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(display_menu);
+				OK.act_button(save_custom_levels);
+				for (int i = 0; i < 5; i++) {
+					circle_color_change[i].act_button(change_circle_color, i);
+				}
+				for (int i = 0; i <= 60; i++) {
+					if (grids[i].reverse_or_not()) {
+						reset_grids();
+						if (!grids[i].reverse_color(1)) {
+							MessageBox(NULL, "请勿重复经过同一宫格", "请重试", MB_OK | MB_ICONERROR);
+							reset_grids();
+							goto restart;
+						};//点击时反转的宫格
+						judge_msg = i;
+						while (1) {
+							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+								if (msg.message == WM_LBUTTONUP) {
+									if (complete_or_not()) {
+										MessageBox(NULL, "请设置具有可玩性的关卡", "请重试", MB_OK | MB_ICONERROR);
+										reset_grids();
+										goto restart;
+									}
+									i = 61;//停止遍历
+									break;
+								}
+								else {
+									for (int j = 0; j <= 60; j++) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
+											if (!grids[j].reverse_color(1)) {
+												MessageBox(NULL, "请勿重复经过同一宫格", "请重试", MB_OK | MB_ICONERROR);
+												reset_grids();
+												goto restart;
+											};
+											judge_msg = j;
+											break;
+										}
+									}
+								}
+							}
+							else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+							{
+								if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
+									reset_grids();
+								}
+							}
+						}
+					}
+				}
+			}
+			else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			{
+				if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
+					reset_grids();
+				}
+			}
+		}
+	}
 }
 
 int main() {
