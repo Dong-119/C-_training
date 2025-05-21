@@ -1350,6 +1350,9 @@ void play_interact(button back,bool* chessboard, void next_level()) {
 											you_win(next_level);
 										}
 									}
+									else {
+										you_lose(chessboard);
+									}
 									i = 61;//Í£Ö¹±éÀú
 									break;
 								}
@@ -1473,6 +1476,9 @@ void interact(button back, bool* chessboard) {
 								if (msg.message == WM_LBUTTONUP) {
 									if (complete_or_not()) {
 										you_win_last_stage();
+									}
+									else {
+										you_lose(chessboard);
 									}
 									i = 61;//Í£Ö¹±éÀú
 									break;
