@@ -526,6 +526,7 @@ void reset_grids() {
 }
 
 void set_question_auto(int num) {
+retry:
 	//重置盘面
 	reset_grids();
 	//记录需反转宫格编号
@@ -538,8 +539,7 @@ void set_question_auto(int num) {
 	int i = rand() % 61;
 	for (int k=0;k<num;k++) {
 		if (i == 0) {//如果路径经过中心格，重新出题，减少题目过于简单概率
-			set_question_auto(num);
-			return;
+			goto retry;
 		}
 		//反转当前宫格颜色
 		recorder[i] = 1;
@@ -558,8 +558,7 @@ void set_question_auto(int num) {
 		}
 		//如果出题到死路，重新出题
 		if (counter == 0&&k!=num-1) {
-			set_question_auto(num);
-			return;
+			goto retry;
 		}//如果出题可以正常进行，更新当前格
 		else if (k != num - 1) {
 			i = container[rand() % counter];
@@ -591,9 +590,7 @@ change_circle_color:
 	// 遍历宫格将绿色与白色宫格编号分别储存在两个数组中
 	vector<int>green;
 	vector<int>white;
-	//中心宫格可经过可不经过不在考虑范围内
-	green.push_back(0);
-	white.push_back(0);
+	//中心宫格可经过可不经过需讨论两次
 	for (int i = 1; i < 61; i++) {
 		if (grids[i].get_color()) {
 			green.push_back(i);
@@ -608,17 +605,29 @@ change_circle_color:
 
 	if (one_piece_or_not(green)) {
 		if (ends_num(green) <= 2) {
-			set_question_auto(num);
-			EndBatchDraw();
-			return;
+			goto retry;
+		}
+	}
+	else {
+		green.push_back(0);
+		if (one_piece_or_not(green)) {
+			if (ends_num(green) <= 2) {
+				goto retry;
+			}
 		}
 	}
 	// 白色同理
 	if (one_piece_or_not(white)) {
 		if (ends_num(white) <= 2) {
-			set_question_auto(num);
-			EndBatchDraw();
-			return;
+			goto retry;
+		}
+	}
+	else {
+		white.push_back(0);
+		if (one_piece_or_not(white)) {
+			if (ends_num(white) <= 2) {
+				goto retry;
+			}
 		}
 	}
 	//记录答案盘面
@@ -1446,7 +1455,7 @@ void display_play() {
 
 	set_chessboard();
 
-	set_question_auto(rand()%6+36);
+	set_question_auto(rand()%5+35);
 
 	//记录本关盘面，供重试功能使用
 	bool chessboard[61];
