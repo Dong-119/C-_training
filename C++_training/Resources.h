@@ -219,25 +219,12 @@ public:
 		}
 	}
 
-	//void act_button(void retry(bool* chessboard), bool* chessboard) {
-	//	//按钮跳转功能
-	//	if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-	//		retry(chessboard);//点击按钮将会跳转至指定函数
-	//	}
-	//}
-
 	void act_button(void save_in(int save_position, IMAGE img, bool* chessboard), int save_position, IMAGE img, bool* chessboard) {
 		//按钮跳转功能
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
 			save_in(save_position, img, chessboard);
 		}
 	}
-
-	//void act_button(void load_to(const char* chessboard_file_name), const char* chessboard_file_name) {
-	//	if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-	//		load_to(chessboard_file_name);
-	//	}
-	//}
 
 	bool act_button(int chooce_mode) {
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
