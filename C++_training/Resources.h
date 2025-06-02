@@ -108,6 +108,7 @@ void you_lose(bool* chessboard);
 void retry(bool* chessboard);
 void display_chooce_mode();
 void display_set_question();
+void set_chessboard();
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -1347,9 +1348,9 @@ roomnuminput:
 		//玩家二昵称
 		char player2name[1024] = { 0 };
 
-		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 		//是否可以开始游戏
 		while (1) {
+			settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
 			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
 				// 获取加入的玩家二的昵称
 				if (strcmp(player2name,"") == 0) {
@@ -1357,12 +1358,13 @@ roomnuminput:
 					center_text(500, 50, w - 500, 400, player2name);
 				}//获取开始游戏信息
 				else if (strcmp(rbuffer, "start")==0) {
-					//goto play;
+					goto play;
 				}
 				else if (strcmp(rbuffer, "player 2 quit")==0) {
 					goto you_are_player_1;
 				}
 			}
+			settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 			back.act_over_mask();
 			start.act_over_mask();
 			if (peekmessage(&msg, EX_MOUSE)) {
@@ -1414,7 +1416,7 @@ roomnuminput:
 			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
 				//获取开始游戏信息
 				if (strcmp(rbuffer, "start")==0) {
-					//goto play;
+					goto play;
 				}
 				else if (strcmp(rbuffer, "player 1 quit")==0) {
 					goto you_are_player_1;
@@ -1443,6 +1445,39 @@ roomnuminput:
 		quit_connection(client_socket);
 		exit(0);
 	}
+
+play:
+	//游玩界面
+	grids.clear();//析构所有宫格
+	//重置游玩模式
+	play_mode = 0;
+	//切BGM
+	music_change_to(1);
+	//换背景
+	cleardevice();
+	loadimage(&play_background, "assets//play_background.png", w, h);
+	putimage(0, 0, &play_background);
+
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+
+	set_chessboard();
+
+	set_question_auto(rand() % 5 + 35);
+
+	//记录本关盘面，供重试功能使用
+	bool chessboard[61];
+	for (int i = 0; i <= 60; i++) {
+		chessboard[i] = grids[i].get_color();
+	}
+	while (1) {
+
+	}
+	//play_interact(back, chessboard, display_play);
+
 	//关闭连接
 	closesocket(client_socket);
 }
