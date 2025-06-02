@@ -1238,18 +1238,26 @@ void display_chooce_stage() {
 	}
 }
 
+//向服务器发送退出消息并断开连接
 void quit_connection(SOCKET client_socket) {
 	printf("disconnect!\n");
 	send(client_socket, "back", sizeof("back"), 0);
 	closesocket(client_socket);
+	display_menu();
 	return;
 }
 
+//客户端点击准备，向服务器示意
+void client_ready(SOCKET client_socket) {
+	send(client_socket, "ready", sizeof("ready"), 0);
+}
+
+//联机模式
 void connect_to_server() {
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	//创建socket套接字
+	//创建客户端socket套接字
 	SOCKET client_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == client_socket) {
 		printf("create socket failed!!!\n");
@@ -1270,30 +1278,32 @@ void connect_to_server() {
 
 	printf("connect!!!\n");
 
-	//开始通讯
-	//struct timeval timeout;
-	//timeout.tv_sec = 5;  // 设置超时时间为5秒
-	//timeout.tv_usec = 0; // 微秒部分设置为0
-
-	char str[10] = { 0 };
 	char rbuffer[1024] = { 0 };
 	// 弹出对话框让用户输入字符串
-	if (!InputBox(str, 10, "请输入昵称",0,0,0,0,0)){
+	if (!InputBox(rbuffer, 10, "请输入昵称",0,0,0,0,0)){
 		quit_connection(client_socket);
 		return;
 	}
+
+	//昵称
+	char name[1024];
+	strcpy(name, rbuffer);
 
 	//发送昵称
-	send(client_socket, str, sizeof(str), 0);
+	send(client_socket, rbuffer, sizeof(rbuffer), 0);
 	//recv(client_socket, rbuffer, 1024, 0);
 roomnuminput:
-	if (!InputBox(str, 10, "请输入房间号",0,0,0,0,0)){
+	if (!InputBox(rbuffer, 10, "请输入房间号",0,0,0,0,0)){
 		quit_connection(client_socket);
 		return;
 	}
 
+	//房间号
+	char roomnum[1024];
+	strcpy(roomnum, rbuffer);
+
 	//发送房间号
-	send(client_socket, str, sizeof(str), 0);
+	send(client_socket, rbuffer, sizeof(rbuffer), 0);
 	//接收返回信息
 	if (recv(client_socket, rbuffer, 1024, 0)<0) {
 		cerr << "no message received";
@@ -1303,41 +1313,119 @@ roomnuminput:
 	if (strcmp(rbuffer, "create") == 0) {
 		printf("create room!!!\n");
 		//绘制对战准备画面
+		//重置游玩模式
+		play_mode = 0;
+		//切BGM
+		music_change_to(0);
+	you_are_player_1:
+		//换背景
+		cleardevice();
+		loadimage(&play_background, "assets//play_background.png", w, h);
+		putimage(0, 0, &play_background);
+		
 		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 		settextcolor(BLACK);
 		center_text(500, 50, 0, 0, "创建房间背景");
+		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+
+		center_text(500, 50, 0, 400, name);
+
 		//粘贴返回贴图
+		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 		button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 		int wbt = 200, hbt = 50;
-		button start((w - wbt) / 2, (h - hbt) / 2, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "开始游戏");
+		button start((w - wbt) / 2, 5*(h - hbt) / 6, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "准备");
+
+		u_long recvmode = 1; // 设置recv为非阻塞模式 非阻塞为1，阻塞为0
+		if (ioctlsocket(client_socket, FIONBIO, &recvmode) == SOCKET_ERROR) {
+			std::cerr << "ioctlsocket failed: " << WSAGetLastError() << std::endl;
+			closesocket(client_socket);
+			WSACleanup();
+			return;
+		}
+
+		//玩家二昵称
+		char player2name[1024] = { 0 };
+
+		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
+		//是否可以开始游戏
 		while (1) {
+			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
+				// 获取加入的玩家二的昵称
+				if (strcmp(player2name,"") == 0) {
+					strcpy(player2name, rbuffer);
+					center_text(500, 50, w - 500, 400, player2name);
+				}//获取开始游戏信息
+				else if (strcmp(rbuffer, "start")==0) {
+					//goto play;
+				}
+				else if (strcmp(rbuffer, "player 2 quit")==0) {
+					goto you_are_player_1;
+				}
+			}
 			back.act_over_mask();
 			start.act_over_mask();
 			if (peekmessage(&msg, EX_MOUSE)) {
 				if (msg.message == WM_LBUTTONDOWN) {
-					back.act_button(quit_connection,client_socket);
-					//start.act_button();
+					back.act_button(quit_connection, client_socket);
+					start.act_button(client_ready, client_socket);
 				}
 			}
 		}
 	}//加入房间
 	else if (strcmp(rbuffer, "ready") == 0) {
 		printf("room ready!!!\n");
+		//获取1号玩家昵称
+		recv(client_socket, rbuffer, 1024, 0);
+		char player1name[1024];
+		strcpy(player1name, rbuffer);
 		//绘制对战准备画面
+		//重置游玩模式
+		play_mode = 0;
+		//切BGM
+		music_change_to(0);
+		//换背景
+		cleardevice();
+		loadimage(&play_background, "assets//play_background.png", w, h);
+		putimage(0, 0, &play_background);
+
 		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 		settextcolor(BLACK);
 		center_text(500, 50, 0, 0, "加入房间背景");
+		
+		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+
+		center_text(500, 50, w - 500, 400, player1name);
+		center_text(500, 50, 0, 400, name);
+
+		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 		//粘贴返回贴图
 		button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
 		int wbt = 200, hbt = 50;
-		button start((w - wbt) / 2, (h - hbt) / 2, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "开始游戏");
+		button start((w - wbt) / 2, 5*(h - hbt) / 6, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "准备");
+		u_long recvmode = 1; // 设置recv为非阻塞模式 非阻塞为1，阻塞为0
+		if (ioctlsocket(client_socket, FIONBIO, &recvmode) == SOCKET_ERROR) {
+			std::cerr << "ioctlsocket failed: " << WSAGetLastError() << std::endl;
+			closesocket(client_socket);
+			WSACleanup();
+			return;
+		}
 		while (1) {
+			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
+				//获取开始游戏信息
+				if (strcmp(rbuffer, "start")==0) {
+					//goto play;
+				}
+				else if (strcmp(rbuffer, "player 1 quit")==0) {
+					goto you_are_player_1;
+				}
+			}
 			back.act_over_mask();
 			start.act_over_mask();
 			if (peekmessage(&msg, EX_MOUSE)) {
 				if (msg.message == WM_LBUTTONDOWN) {
 					back.act_button(quit_connection,client_socket);
-					//start.act_button();
+					start.act_button(client_ready,client_socket);
 				}
 			}
 		}
@@ -1345,13 +1433,15 @@ roomnuminput:
 	else if (strcmp(rbuffer, "at full") == 0) {
 		printf("room at full!!!\n");
 		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
-		settextcolor(WHITE);
+		settextcolor(BLACK);
 		center_text(100, 50, 0, 0, "房间已满");
 		Sleep(100);
 		goto roomnuminput;
 	}
 	else {
 		printf("error!!!\n");
+		quit_connection(client_socket);
+		exit(0);
 	}
 	//关闭连接
 	closesocket(client_socket);
