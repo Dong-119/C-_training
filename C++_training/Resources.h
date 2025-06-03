@@ -89,6 +89,8 @@ void music_change_to(int i) {
 	}
 }
 
+const static int whint = 1.2 * 214, hhint = 1.2 * 246, xhint = w - whint, yhint = 240;
+
 //计算音量函数
 DWORD CalculateVolume(int leftPercent, int rightPercent) {
 	return (DWORD)((leftPercent * 0xFFFF / 100) | ((rightPercent * 0xFFFF / 100) << 16));
@@ -109,6 +111,7 @@ void retry(bool* chessboard);
 void display_chooce_mode();
 void display_set_question();
 void set_chessboard();
+void hint(int xhint, int yhint, int whint, int hhint);
 
 //按键中间输入文字
 void center_text(int wbutton, int hbutton, int xtop_left, int ytop_left, const char str[]) {
@@ -210,6 +213,15 @@ public:
 				putimage(x, y, &button_nor);
 				set_str(word.c_str());
 			}
+		}
+	}
+
+	bool act_button() {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			return true;//点击按钮将会跳转至指定函数
+		}
+		else {
+			return false;
 		}
 	}
 
@@ -1253,8 +1265,270 @@ void client_ready(SOCKET client_socket) {
 	send(client_socket, "ready", sizeof("ready"), 0);
 }
 
+void give_up(SOCKET client_socket) {
+	send(client_socket, "give up", sizeof("give up"), 0);
+}
+
+void i_win(SOCKET client_socket) {
+	send(client_socket, "win", sizeof("win"), 0);
+}
+
+bool* clb_set_question() {
+	set_chessboard();
+
+	set_question_auto(rand() % 5 + 35);
+
+	//记录本关盘面，供重试功能使用
+	bool chessboard[61];
+	for (int i = 0; i <= 60; i++) {
+		chessboard[i] = grids[i].get_color();
+	}
+
+	grids.clear();//析构所有宫格
+
+	return chessboard;
+}
+
+//结算界面，胜利i==true,失败i==false
+void win(bool i) {
+	grids.clear();//析构所有宫格
+	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
+	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
+	int ximg = (w - pop_up.getwidth()) / 2; int yimg = (h - pop_up.getheight()) / 2;
+	put_png(ximg, yimg, &pop_up, &pop_up_mask);
+	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+	if(i==true)
+	    center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "YOU WIN");
+	else if(i==false)
+		center_text(2 * pop_up.getwidth() / 3, pop_up.getheight() / 3, ximg + pop_up.getwidth() / 3, yimg, "YOU LOSE");
+	int wbt = 200; int hbt = 50;
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	button next(ximg + pop_up.getwidth()/3 + (2*pop_up.getwidth()/3 - wbt) / 2, yimg + 2 * pop_up.getheight() / 3 + (pop_up.getheight() / 3 - hbt) / 2, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "继续");
+	while (1) {
+		if (peekmessage(&msg, EX_MOUSE)) {
+			next.act_over_mask();
+			if (msg.message == WM_LBUTTONDOWN) {
+				if (next.act_button()) {
+					return;
+				}
+			}
+		}
+	}
+}
+
+void clb_play(SOCKET client_socket) {
+	char rbuffer[1024];
+	//游玩界面
+	grids.clear();//析构所有宫格
+	//重置游玩模式
+	play_mode = 0;
+	//切BGM
+	music_change_to(1);
+	//换背景
+	cleardevice();
+	loadimage(&play_background, "assets//play_background.png", w, h);
+	putimage(0, 0, &play_background);
+
+	//粘贴返回贴图
+	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	setbkmode(TRANSPARENT);
+	button back(40, 40, wback, hback, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "认输");
+	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	setbkmode(TRANSPARENT);
+
+	bool chessboard[61] = { 0 };
+	bool* first = clb_set_question();
+	for (int i = 0; i < 61; i++) {
+		chessboard[i] = *(first + i);
+	}
+
+retry:
+	grids.clear();//析构所有宫格
+	set_chessboard();
+	//加载盘面
+	for (int i = 0; i < 61; i++) {
+		if (chessboard[i]) {
+			grids[i].reverse_set_question();
+		}
+	}
+	//持续捕捉鼠标信息
+	int judge_msg;
+	while (1) {
+		if (recv(client_socket, rbuffer, 1024, 0) > 0) {
+			//获取结束游戏信息
+			//如果收到获胜信息
+			if (strcmp(rbuffer, "win") == 0) {
+				//胜利界面
+				cout << "i win" << endl;
+				win(1);
+				return;
+			}//如果收到失败信息
+			else if (strcmp(rbuffer, "lose") == 0) {
+				//失败界面
+				cout << "i lose" << endl;
+				win(0);
+				return;
+			}
+		}
+		settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextcolor(WHITE);
+		setbkmode(TRANSPARENT);
+		back.act_over_mask();
+		if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(give_up,client_socket);
+				for (int i = 0; i <= 60; i++) {
+					if (grids[i].reverse_or_not()) {
+						if (!grids[i].reverse_color(mode)) {
+							goto retry;
+						};//点击时反转的宫格
+						judge_msg = i;
+						while (1) {
+							if (peekmessage(&msg, EX_MOUSE | EX_KEY)) {
+								if (msg.message == WM_LBUTTONUP) {
+									if (complete_or_not()) {
+										i_win(client_socket);
+										cout << "i win" << endl;
+										//胜利界面
+										win(1);
+										return;
+									}
+									else {
+										goto retry;
+									}
+									i = 61;//停止遍历
+									break;
+								}
+								else {
+									for (int j = 0; j <= 60; j++) {
+										if (grids[j].reverse_or_not() && adjacent_or_not(judge_msg, j)) {
+											if (!grids[j].reverse_color(mode)) {
+												goto retry;
+											}
+											judge_msg = j;
+											break;
+										}
+									}
+								}
+							}
+							else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+							{
+								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+								{
+									settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+									settextcolor(WHITE);
+									setbkmode(TRANSPARENT);
+									center_text(300, 50, w - 300, h - 100, "对战模式存什么档（+o o）");
+								}
+								else if (msg.vkcode == 0x48) {// 判断是否按下 h 或 H 键
+									put_png(xhint, yhint, &hint_window, &hint_window_mask);
+									settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+									settextcolor(BLACK);
+									center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");
+								}
+								else if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
+									goto retry;
+								}
+							}
+						}
+					}
+				}
+			}
+			else if (msg.message == WM_KEYDOWN) // 判断是否是按键按下消息
+			{
+				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
+				{
+					settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+					settextcolor(WHITE);
+					setbkmode(TRANSPARENT);
+					center_text(300, 50, w - 300, h - 100, "对战模式存什么档（+o o）");
+				}
+				else if (msg.vkcode == 0x48) {
+					/*put_png(xhint, yhint, &hint_window, &hint_window_mask);
+					settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+					settextcolor(BLACK);
+					center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");*/
+					hint(xhint, yhint, whint, hhint);
+				}
+				else if (msg.vkcode == 0x52) {
+					goto retry;
+				}
+			}
+		}
+	}
+}
+
+int room_ready(SOCKET client_socket,char player1name[1024], char player2name[1024]) {
+restart:
+	char rbuffer[1024];
+	//重置游玩模式
+	play_mode = 0;
+	//切BGM
+	music_change_to(0);
+	//换背景
+	cleardevice();
+	loadimage(&play_background, "assets//play_background.png", w, h);
+	putimage(0, 0, &play_background);
+
+	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(BLACK);
+	center_text(500, 50, 0, 0, "加入房间背景");
+
+	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+
+	center_text(500, 50, 0, 400, player1name);
+	center_text(500, 50, w - 500, 400, player2name);
+
+	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
+	//粘贴返回贴图
+	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
+	int wbt = 200, hbt = 50;
+	button start((w - wbt) / 2, 5 * (h - hbt) / 6, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "准备");
+	u_long recvmode = 1; // 设置recv为非阻塞模式 非阻塞为1，阻塞为0
+	if (ioctlsocket(client_socket, FIONBIO, &recvmode) == SOCKET_ERROR) {
+		std::cerr << "ioctlsocket failed: " << WSAGetLastError() << std::endl;
+		closesocket(client_socket);
+		WSACleanup();
+		return -1;
+	}
+	while (1) {
+		if (recv(client_socket, rbuffer, 1024, 0) > 0) {
+			//获取开始游戏信息
+			if (strcmp(rbuffer, "start") == 0) {
+				clb_play(client_socket);
+				goto restart;
+			}
+			else if (strcmp(rbuffer, "player 1 quit") == 0) {
+				return 1;
+			}
+			else if (strcmp(rbuffer, "player 2 quit") == 0) {
+				return 1;
+			}/////////
+		}
+		back.act_over_mask();
+		start.act_over_mask();
+		if (peekmessage(&msg, EX_MOUSE)) {
+			if (msg.message == WM_LBUTTONDOWN) {
+				back.act_button(quit_connection, client_socket);
+				start.act_button(client_ready, client_socket);
+			}
+		}
+	}
+}
+
 //联机模式
-void connect_to_server() {
+void connect_to_server(int i) {
+	//玩家昵称
+	char player1name[1024] = { 0 };
+	char player2name[1024] = { 0 };
+
+	char rbuffer[1024] = { 0 };
+
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -1279,7 +1553,6 @@ void connect_to_server() {
 
 	printf("connect!!!\n");
 
-	char rbuffer[1024] = { 0 };
 	// 弹出对话框让用户输入字符串
 	if (!InputBox(rbuffer, 10, "请输入昵称",0,0,0,0,0)){
 		quit_connection(client_socket);
@@ -1304,7 +1577,7 @@ roomnuminput:
 	strcpy(roomnum, rbuffer);
 
 	//发送房间号
-	send(client_socket, rbuffer, sizeof(rbuffer), 0);
+	send(client_socket, roomnum, sizeof(roomnum), 0);
 	//接收返回信息
 	if (recv(client_socket, rbuffer, 1024, 0)<0) {
 		cerr << "no message received";
@@ -1318,7 +1591,7 @@ roomnuminput:
 		play_mode = 0;
 		//切BGM
 		music_change_to(0);
-	you_are_player_1:
+you_are_player_1:
 		//换背景
 		cleardevice();
 		loadimage(&play_background, "assets//play_background.png", w, h);
@@ -1345,8 +1618,9 @@ roomnuminput:
 			return;
 		}
 
-		//玩家二昵称
-		char player2name[1024] = { 0 };
+		strcpy(player1name, name);
+		//重置玩家二昵称
+		strcpy(player2name, "");
 
 		//是否可以开始游戏
 		while (1) {
@@ -1356,12 +1630,9 @@ roomnuminput:
 				if (strcmp(player2name,"") == 0) {
 					strcpy(player2name, rbuffer);
 					center_text(500, 50, w - 500, 400, player2name);
-				}//获取开始游戏信息
-				else if (strcmp(rbuffer, "start")==0) {
-					goto play;
-				}
-				else if (strcmp(rbuffer, "player 2 quit")==0) {
-					goto you_are_player_1;
+					if (room_ready(client_socket, player1name, player2name) == 1) {
+						goto you_are_player_1;
+					}
 				}
 			}
 			settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
@@ -1377,59 +1648,16 @@ roomnuminput:
 	}//加入房间
 	else if (strcmp(rbuffer, "ready") == 0) {
 		printf("room ready!!!\n");
+		strcpy(player2name, name);
 		//获取1号玩家昵称
 		recv(client_socket, rbuffer, 1024, 0);
-		char player1name[1024];
+		char player1name[1024] = { 0 };
 		strcpy(player1name, rbuffer);
+		strcpy(player2name, name);
 		//绘制对战准备画面
-		//重置游玩模式
-		play_mode = 0;
-		//切BGM
-		music_change_to(0);
-		//换背景
-		cleardevice();
-		loadimage(&play_background, "assets//play_background.png", w, h);
-		putimage(0, 0, &play_background);
-
-		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
-		settextcolor(BLACK);
-		center_text(500, 50, 0, 0, "加入房间背景");
-		
-		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
-
-		center_text(500, 50, w - 500, 400, player1name);
-		center_text(500, 50, 0, 400, name);
-
-		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
-		//粘贴返回贴图
-		button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
-		int wbt = 200, hbt = 50;
-		button start((w - wbt) / 2, 5*(h - hbt) / 6, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "准备");
-		u_long recvmode = 1; // 设置recv为非阻塞模式 非阻塞为1，阻塞为0
-		if (ioctlsocket(client_socket, FIONBIO, &recvmode) == SOCKET_ERROR) {
-			std::cerr << "ioctlsocket failed: " << WSAGetLastError() << std::endl;
-			closesocket(client_socket);
-			WSACleanup();
-			return;
-		}
-		while (1) {
-			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
-				//获取开始游戏信息
-				if (strcmp(rbuffer, "start")==0) {
-					goto play;
-				}
-				else if (strcmp(rbuffer, "player 1 quit")==0) {
-					goto you_are_player_1;
-				}
-			}
-			back.act_over_mask();
-			start.act_over_mask();
-			if (peekmessage(&msg, EX_MOUSE)) {
-				if (msg.message == WM_LBUTTONDOWN) {
-					back.act_button(quit_connection,client_socket);
-					start.act_button(client_ready,client_socket);
-				}
-			}
+    
+		if (room_ready(client_socket, player1name, player2name) == 1) {
+			goto you_are_player_1;
 		}
 	}//房间已满
 	else if (strcmp(rbuffer, "at full") == 0) {
@@ -1445,38 +1673,6 @@ roomnuminput:
 		quit_connection(client_socket);
 		exit(0);
 	}
-
-play:
-	//游玩界面
-	grids.clear();//析构所有宫格
-	//重置游玩模式
-	play_mode = 0;
-	//切BGM
-	music_change_to(1);
-	//换背景
-	cleardevice();
-	loadimage(&play_background, "assets//play_background.png", w, h);
-	putimage(0, 0, &play_background);
-
-	//粘贴返回贴图
-	button back(40, 40, wback, hback, "assets//back.png", "assets//back_over.png", "assets//back_mask.png");
-	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
-	settextcolor(BLACK);
-	setbkmode(TRANSPARENT);
-
-	set_chessboard();
-
-	set_question_auto(rand() % 5 + 35);
-
-	//记录本关盘面，供重试功能使用
-	bool chessboard[61];
-	for (int i = 0; i <= 60; i++) {
-		chessboard[i] = grids[i].get_color();
-	}
-	while (1) {
-
-	}
-	//play_interact(back, chessboard, display_play);
 
 	//关闭连接
 	closesocket(client_socket);
@@ -1509,7 +1705,7 @@ void display_chooce_mode() {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
 				stage.act_button(display_chooce_stage);
-				online.act_button(connect_to_server);
+				online.act_button(connect_to_server, 0);
 				endless.act_button(display_play);
 			}
 		}
@@ -1532,8 +1728,6 @@ void hint(int xhint, int yhint, int whint, int hhint) {
 	settextcolor(BLACK);
 	center_text(whint, hhint, xhint, yhint, "提示信息已高亮显示");
 }
-
-const static int whint = 1.2 * 214, hhint = 1.2 * 246, xhint = w - whint, yhint = 240;
 
 void set_chessboard() {
 	int deltax = 72, deltay = 38;//六边形紧密拼凑需要的横纵坐标差
