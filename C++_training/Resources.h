@@ -1073,6 +1073,10 @@ void load_to(const char* chessboard_file_name) {
 	// 打开文件
 	ifstream inputFile(chessboard_file_name);
 
+	if (!inputFile.is_open()) {
+		MessageBox(NULL, "该存档不存在，请点击有效存档", "无法打开", MB_OK | MB_ICONERROR);
+		return ; // 退出程序
+	}
 	char ch;
 	// 逐字符读取文件内容
 	while (inputFile.get(ch)) {
@@ -2113,7 +2117,7 @@ void save_custom_levels() {
 		}
 		file.close(); // 关闭文件
 
-		MessageBox(NULL, "文件保存成功", "保存成功", MB_OK | MB_ICONERROR); // 输出成功创建文件的信息
+		MessageBox(NULL, "文件保存成功", "保存成功", MB_OK | MB_ICONINFORMATION); // 输出成功创建文件的信息
 	}
 	else {
 		MessageBox(NULL, "取消操作", "保存失败", MB_OK | MB_ICONERROR); // 如果用户取消了操作，输出提示信息
