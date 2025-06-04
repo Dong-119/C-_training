@@ -126,7 +126,7 @@ private:
 	int w = 0, h = 0;//长宽
 	IMAGE button_nor, button_mask, button_over;
 	string word;
-	bool state = false;//false代表鼠标不在按键上
+	bool state = false;//false代表鼠标不在按键上 或 按键状态为未开启（仅act_button_state函数）
 
 	void set_str(const char* word) {
 		center_text(w, h, x, y, word);
@@ -218,7 +218,7 @@ public:
 
 	bool act_button() {
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-			return true;//点击按钮将会跳转至指定函数
+			return true;
 		}
 		else {
 			return false;
@@ -252,9 +252,25 @@ public:
 		return false;
 	}
 	template <typename T>
-	void act_button(void change_circle_color(T n), T n) {
+	void act_button(void f(T n), T n) {
 		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
-			change_circle_color(n);
+			f(n);
+		}
+	}
+
+	template <typename T>
+	void act_button_state(void f(T n), T n) {
+		if (msg.x > x && msg.x<x + w && msg.y>y && msg.y < y + h) {
+			f(n);
+			state = !(state);
+			if (state) {
+				put_png(x, y, &button_over, &button_mask);
+				set_str(word.c_str());
+			}
+			else {
+				put_png(x, y, &button_nor, &button_mask);
+				set_str(word.c_str());
+			}
 		}
 	}
 
@@ -1336,7 +1352,7 @@ void clb_play(SOCKET client_socket) {
 	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
 	setbkmode(TRANSPARENT);
-	button back(40, 40, wback, hback, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "认输");
+	button back(40, 40, 2*wback, hback, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "认输");
 	settextstyle(60, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(BLACK);
 	setbkmode(TRANSPARENT);
@@ -1463,7 +1479,7 @@ retry:
 	}
 }
 
-int room_ready(SOCKET client_socket,char player1name[1024], char player2name[1024]) {
+int room_ready(SOCKET client_socket,char player1name[1024], char player2name[1024], char roomnum[1024]) {
 restart:
 	char rbuffer[1024];
 	//重置游玩模式
@@ -1475,14 +1491,22 @@ restart:
 	loadimage(&play_background, "assets//play_background.png", w, h);
 	putimage(0, 0, &play_background);
 
-	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
-	settextcolor(BLACK);
-	center_text(500, 50, 0, 0, "加入房间背景");
-
+	settextstyle(38, 0, "幼圆", 0, 0, 1000, false, false, false);
+	settextcolor(WHITE);
+	IMAGE name_bg, name_bg_mask;
+	loadimage(&name_bg, "assets//UItemplate2.png", 300, 50);
+	loadimage(&name_bg_mask, "assets//UItemplate_mask.png", 300, 50);
+	put_png(200, 400, &name_bg, &name_bg_mask);
+	put_png(w - 500, 400, &name_bg, &name_bg_mask);
+	center_text(300, 50, 200, 400, player1name);
+	center_text(300, 50, w - 500, 400, player2name);
+	IMAGE rnbg, rnbg_mask;
+	loadimage(&rnbg, "assets//sys_base@framebase%layer.png", 300, 80);
+	loadimage(&rnbg_mask, "assets//sys_base@framebase%layer_mask.png", 300, 80);
+	put_png((w - 300) / 2, 110, &rnbg, &rnbg_mask);
 	settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
-
-	center_text(500, 50, 0, 400, player1name);
-	center_text(500, 50, w - 500, 400, player2name);
+	settextcolor(WHITE);
+	center_text(w, 100, 0, 100, roomnum);
 
 	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 	//粘贴返回贴图
@@ -1511,11 +1535,10 @@ restart:
 			}/////////
 		}
 		back.act_over_mask();
-		start.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(quit_connection, client_socket);
-				start.act_button(client_ready, client_socket);
+				start.act_button_state(client_ready, client_socket);
 			}
 		}
 	}
@@ -1554,7 +1577,7 @@ void connect_to_server(int i) {
 	printf("connect!!!\n");
 
 	// 弹出对话框让用户输入字符串
-	if (!InputBox(rbuffer, 10, "请输入昵称",0,0,0,0,0)){
+	if (!InputBox(rbuffer, 12, "请输入昵称(不超过5个汉字)",0,0,0,0,0)){
 		quit_connection(client_socket);
 		return;
 	}
@@ -1597,12 +1620,22 @@ you_are_player_1:
 		loadimage(&play_background, "assets//play_background.png", w, h);
 		putimage(0, 0, &play_background);
 		
-		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
-		settextcolor(BLACK);
-		center_text(500, 50, 0, 0, "创建房间背景");
-		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextstyle(38, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextcolor(WHITE);
 
-		center_text(500, 50, 0, 400, name);
+		IMAGE name_bg, name_bg_mask;
+		loadimage(&name_bg, "assets//UItemplate2.png", 300, 50);
+		loadimage(&name_bg_mask, "assets//UItemplate_mask.png", 300, 50);
+		put_png(200, 400, &name_bg, &name_bg_mask);
+		put_png(w-500, 400, &name_bg, &name_bg_mask);
+		center_text(300, 50, 200, 400, name);
+		IMAGE rnbg, rnbg_mask;
+		loadimage(&rnbg, "assets//sys_base@framebase%layer.png", 300, 80);
+		loadimage(&rnbg_mask, "assets//sys_base@framebase%layer_mask.png", 300, 80);
+		put_png((w - 300) / 2, 110, &rnbg, &rnbg_mask);
+		settextstyle(50, 0, "幼圆", 0, 0, 1000, false, false, false);
+		settextcolor(WHITE);
+		center_text(w, 100, 0, 100, roomnum);
 
 		//粘贴返回贴图
 		settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
@@ -1629,19 +1662,18 @@ you_are_player_1:
 				// 获取加入的玩家二的昵称
 				if (strcmp(player2name,"") == 0) {
 					strcpy(player2name, rbuffer);
-					center_text(500, 50, w - 500, 400, player2name);
-					if (room_ready(client_socket, player1name, player2name) == 1) {
+					center_text(300, 50, w - 500, 400, player2name);
+					if (room_ready(client_socket, player1name, player2name,roomnum) == 1) {
 						goto you_are_player_1;
 					}
 				}
 			}
 			settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 			back.act_over_mask();
-			start.act_over_mask();
 			if (peekmessage(&msg, EX_MOUSE)) {
 				if (msg.message == WM_LBUTTONDOWN) {
 					back.act_button(quit_connection, client_socket);
-					start.act_button(client_ready, client_socket);
+					start.act_button_state(client_ready, client_socket);
 				}
 			}
 		}
@@ -1656,7 +1688,7 @@ you_are_player_1:
 		strcpy(player2name, name);
 		//绘制对战准备画面
     
-		if (room_ready(client_socket, player1name, player2name) == 1) {
+		if (room_ready(client_socket, player1name, player2name,roomnum) == 1) {
 			goto you_are_player_1;
 		}
 	}//房间已满
