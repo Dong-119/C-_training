@@ -74,6 +74,8 @@ int mode = 1;
 int play_mode = 0;
 //定义当前BGM状态
 int music = -1;
+//是否作弊
+bool cheat = false;
 //定义音量
 int volume = 10;
 //切换BGM函数
@@ -872,6 +874,25 @@ void display_how_to_play() {
 	}
 }
 
+void cheat_on() {
+	char rbuffer[1024] = { 0 };
+	if (!cheat) {
+		if (!InputBox(rbuffer, 12, "请输入作弊码", 0, 0, 0, 0, 0)) {
+			return;
+		}
+		if (strcmp(rbuffer, "0721") == 0) {
+			cheat = true;
+			MessageBox(NULL, "现在您可以在联机模式使用提示功能了", "作弊码正确", MB_OK | MB_ICONINFORMATION);
+		}
+		else {
+			MessageBox(NULL, "请确认作弊码是否正确", "作弊码错误", MB_OK | MB_ICONERROR);
+		}
+	}
+	else {
+		MessageBox(NULL, "作弊模式已开启", "作弊码已输入", MB_OK | MB_ICONINFORMATION);
+	}
+}
+
 void display_setting() {
 	grids.clear();//析构所有宫格
 	IMAGE setting_background;
@@ -940,11 +961,14 @@ void display_setting() {
 	int wsq = 241, hsq = 55;
 	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 	button set_question(w - wsq - 180, h - hsq - 180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "设置自定义关卡");
+	button cheating(w - wsq - 180, h + hsq - 180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "输入作弊码");
+
 
 	//持续捕捉鼠标信息
 	while (1) {
 		back.act_over_mask();
 		set_question.act_over_mask();
+		cheating.act_over_mask();
 		for (int i = 0; i < 3; i++) {
 			mode_chooce[i].act_over_mask();
 		}
@@ -952,6 +976,7 @@ void display_setting() {
 			if (msg.message == WM_LBUTTONDOWN) {
 				back.act_button(display_menu);
 				set_question.act_button(display_set_question);
+				cheating.act_button(cheat_on);
 				for (int i = 0; i < 3; i++) {
 					if (mode_chooce[i].act_button(i)) {
 						for (int j = 0; j < 3; j++) {
@@ -1339,7 +1364,8 @@ void win(bool i) {
 	}
 }
 
-void clb_play(SOCKET client_socket) {
+void clb_play(SOCKET client_socket,int mode_now) {
+	mode = 1;
 	char rbuffer[1024];
 	//游玩界面
 	grids.clear();//析构所有宫格
@@ -1386,12 +1412,14 @@ retry:
 				//胜利界面
 				cout << "i win" << endl;
 				win(1);
+				mode = mode_now;
 				return;
 			}//如果收到失败信息
 			else if (strcmp(rbuffer, "lose") == 0) {
 				//失败界面
 				cout << "i lose" << endl;
 				win(0);
+				mode = mode_now;
 				return;
 			}
 		}
@@ -1416,6 +1444,7 @@ retry:
 										cout << "i win" << endl;
 										//胜利界面
 										win(1);
+										mode = mode_now;
 										return;
 									}
 									else {
@@ -1446,10 +1475,15 @@ retry:
 									center_text(300, 50, w - 300, h - 100, "对战模式存什么档（+o o）");
 								}
 								else if (msg.vkcode == 0x48) {// 判断是否按下 h 或 H 键
-									put_png(xhint, yhint, &hint_window, &hint_window_mask);
-									settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
-									settextcolor(BLACK);
-									center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");
+									if (!cheat) {
+										put_png(xhint, yhint, &hint_window, &hint_window_mask);
+										settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+										settextcolor(BLACK);
+										center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");
+									}
+									else {
+										hint(xhint, yhint, whint, hhint);
+									}
 								}
 								else if (msg.vkcode == 0x52) {// 判断是否按下 r 或 R 键
 									goto retry;
@@ -1469,11 +1503,15 @@ retry:
 					center_text(300, 50, w - 300, h - 100, "对战模式存什么档（+o o）");
 				}
 				else if (msg.vkcode == 0x48) {
-					/*put_png(xhint, yhint, &hint_window, &hint_window_mask);
-					settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
-					settextcolor(BLACK);
-					center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");*/
-					hint(xhint, yhint, whint, hhint);
+					if (!cheat) {
+						put_png(xhint, yhint, &hint_window, &hint_window_mask);
+						settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
+						settextcolor(BLACK);
+						center_text(whint, hhint, xhint, yhint, "对战模式还要提示（+o o）");
+					}
+					else {
+						hint(xhint, yhint, whint, hhint);
+					}
 				}
 				else if (msg.vkcode == 0x52) {
 					goto retry;
@@ -1528,7 +1566,7 @@ restart:
 		if (recv(client_socket, rbuffer, 1024, 0) > 0) {
 			//获取开始游戏信息
 			if (strcmp(rbuffer, "start") == 0) {
-				clb_play(client_socket);
+				clb_play(client_socket,mode);
 				goto restart;
 			}
 			else if (strcmp(rbuffer, "player 1 quit") == 0) {
@@ -1536,7 +1574,7 @@ restart:
 			}
 			else if (strcmp(rbuffer, "player 2 quit") == 0) {
 				return 1;
-			}/////////
+			}
 		}
 		back.act_over_mask();
 		if (peekmessage(&msg, EX_MOUSE)) {
