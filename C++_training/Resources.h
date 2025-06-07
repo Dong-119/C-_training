@@ -961,7 +961,7 @@ void display_setting() {
 	int wsq = 241, hsq = 55;
 	settextstyle(25, 0, "幼圆", 0, 0, 1000, false, false, false);
 	button set_question(w - wsq - 180, h - hsq - 180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "设置自定义关卡");
-	button cheating(w - wsq - 180, h + hsq - 180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "输入作弊码");
+	button cheating(w - wsq - 180, h - 3 * hsq - 180, wsq, hsq, "assets//UItemplate3_nor.png", "assets//UItemplate3_over.png", "assets//UItemplate3_mask.png", "输入作弊码");
 
 
 	//持续捕捉鼠标信息
@@ -1335,7 +1335,7 @@ bool* clb_set_question() {
 }
 
 //结算界面，胜利i==true,失败i==false
-void win(bool i) {
+int win(bool i,SOCKET client_socket) {
 	grids.clear();//析构所有宫格
 	loadimage(&pop_up, "assets//pop_up.png", 0, 0);
 	loadimage(&pop_up_mask, "assets//pop_up_mask.png", 0, 0);
@@ -1352,19 +1352,30 @@ void win(bool i) {
 	settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
 	settextcolor(WHITE);
 	button next(ximg + pop_up.getwidth()/3 + (2*pop_up.getwidth()/3 - wbt) / 2, yimg + 2 * pop_up.getheight() / 3 + (pop_up.getheight() / 3 - hbt) / 2, wbt, hbt, "assets\\UItemplate3_nor.png", "assets\\UItemplate3_over.png", "assets\\UItemplate3_mask.png", "继续");
+	char rbuffer[1024] = { 0 };
 	while (1) {
 		if (peekmessage(&msg, EX_MOUSE)) {
 			next.act_over_mask();
 			if (msg.message == WM_LBUTTONDOWN) {
 				if (next.act_button()) {
-					return;
+					return 0;
+				}
+			}
+			if (recv(client_socket, rbuffer, 1024, 0) > 0) {
+				if (strcmp(rbuffer, "player 1 quit") == 0) {
+					cout << "player 1 quit" << endl;
+					return 1;
+				}
+				else if (strcmp(rbuffer, "player 2 quit") == 0) {
+					cout << "player 2 quit" << endl;
+					return 1;
 				}
 			}
 		}
 	}
 }
 
-void clb_play(SOCKET client_socket,int mode_now) {
+int clb_play(SOCKET client_socket,int mode_now) {
 	mode = 1;
 	char rbuffer[1024];
 	//游玩界面
@@ -1411,16 +1422,20 @@ retry:
 			if (strcmp(rbuffer, "win") == 0) {
 				//胜利界面
 				cout << "i win" << endl;
-				win(1);
-				mode = mode_now;
-				return;
+				if (win(1, client_socket)) {
+					mode = mode_now;
+					return 1;
+				}
+				return 0;
 			}//如果收到失败信息
 			else if (strcmp(rbuffer, "lose") == 0) {
 				//失败界面
 				cout << "i lose" << endl;
-				win(0);
-				mode = mode_now;
-				return;
+				if (win(0, client_socket)) {
+					mode = mode_now;
+					return 1;
+				}
+				return 0;
 			}
 		}
 		settextstyle(20, 0, "幼圆", 0, 0, 1000, false, false, false);
@@ -1443,9 +1458,11 @@ retry:
 										i_win(client_socket);
 										cout << "i win" << endl;
 										//胜利界面
-										win(1);
-										mode = mode_now;
-										return;
+										if (win(1, client_socket)) {
+											mode = mode_now;
+											return 1;
+										}
+										return 0;
 									}
 									else {
 										goto retry;
@@ -1523,7 +1540,7 @@ retry:
 
 int room_ready(SOCKET client_socket,char player1name[1024], char player2name[1024], char roomnum[1024]) {
 restart:
-	char rbuffer[1024];
+	char rbuffer[1024] = { 0 };
 	//重置游玩模式
 	play_mode = 0;
 	//切BGM
@@ -1562,17 +1579,22 @@ restart:
 		WSACleanup();
 		return -1;
 	}
+	char* buffer = { 0 };
 	while (1) {
 		if (recv(client_socket, rbuffer, 1024, 0) > 0) {
 			//获取开始游戏信息
 			if (strcmp(rbuffer, "start") == 0) {
-				clb_play(client_socket,mode);
+				if(clb_play(client_socket,mode)){
+					return 1;
+				}
 				goto restart;
 			}
 			else if (strcmp(rbuffer, "player 1 quit") == 0) {
+				cout << "player 1 quit" << endl;
 				return 1;
 			}
-			else if (strcmp(rbuffer, "player 2 quit") == 0) {
+			else if (strcmp(rbuffer, "player 2 quit") == 0 ) {
+				cout << "player 2 quit" << endl;
 				return 1;
 			}
 		}
@@ -1704,6 +1726,7 @@ you_are_player_1:
 				// 获取加入的玩家二的昵称
 				if (strcmp(player2name,"") == 0) {
 					strcpy(player2name, rbuffer);
+					cout << player2name << endl;
 					center_text(300, 50, w - 500, 400, player2name);
 					if (room_ready(client_socket, player1name, player2name,roomnum) == 1) {
 						goto you_are_player_1;
