@@ -91,7 +91,7 @@ void music_change_to(int i) {
 	}
 }
 
-const static int whint = 1.2 * 214, hhint = 1.2 * 246, xhint = w - whint, yhint = 240;
+const static int whint = 256, hhint = 295, xhint = w - whint, yhint = 240;
 
 //计算音量函数
 DWORD CalculateVolume(int leftPercent, int rightPercent) {
@@ -1926,7 +1926,7 @@ void play_interact(button back, bool* chessboard, void next_level()) {
 								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
 								{
 									IMAGE img;
-									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+									int wget_img = 1305, hget_img = 729;
 									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 									display_save(chessboard, img);
 								}
@@ -1946,7 +1946,7 @@ void play_interact(button back, bool* chessboard, void next_level()) {
 				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
 				{
 					IMAGE img;
-					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+					int wget_img = 1305, hget_img = 729;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 					display_save(chessboard, img);
 				}
@@ -2053,7 +2053,7 @@ void interact(button back, bool* chessboard) {
 								if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
 								{
 									IMAGE img;
-									int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+									int wget_img = 1305, hget_img = 729;
 									getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 									display_save(chessboard, img);
 								}
@@ -2073,7 +2073,7 @@ void interact(button back, bool* chessboard) {
 				if (msg.vkcode == 0x53) // 判断是否按下 s 或 S 键
 				{
 					IMAGE img;
-					int wget_img = 229 * 5.7, hget_img = 128 * 5.7;
+					int wget_img = 1305, hget_img = 729;
 					getimage(&img, (w - wget_img) / 2, (h - hget_img) / 2, wget_img, hget_img);
 					display_save(chessboard, img);
 				}
